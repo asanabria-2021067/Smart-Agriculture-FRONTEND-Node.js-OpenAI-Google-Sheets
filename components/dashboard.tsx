@@ -47,14 +47,6 @@ interface Stats {
   ultimoRiego: string
 }
 
-/**
- * Dashboard Component
- * 
- * Endpoints del Backend:
- * - GET /api/sensors/current -> { success: true, data: SensorData }
- * - GET /api/sensors/history?hours=24 -> { success: true, data: SensorData[] }
- * - GET /api/sensors/stats?hours=24 -> { success: true, data: { temperatura: {...}, humedadSuelo: {...}, humedadAire: {...} } }
- */
 export default function Dashboard() {
   const [currentData, setCurrentData] = useState<SensorData | null>(null)
   const [historyData, setHistoryData] = useState<SensorData[]>([])
@@ -67,69 +59,48 @@ export default function Dashboard() {
       setLoading(true)
       setError(null)
 
-      // Obtener datos actuales
       const currentResponse = await fetch(getApiUrl(API_CONFIG.endpoints.sensorsCurrent))
-      if (!currentResponse.ok) {
-        throw new Error(`Error en /current: ${currentResponse.status}`)
-      }
+      if (!currentResponse.ok) throw new Error(`Error en /current: ${currentResponse.status}`)
       const currentJson = await currentResponse.json()
-      
-      // El backend retorna: { success: true, data: {...} }
-      if (currentJson.success && currentJson.data) {
-        setCurrentData(currentJson.data)
-      }
+      if (currentJson.success && currentJson.data) setCurrentData(currentJson.data)
 
-      // Obtener historial (últimas 24 horas)
       const historyResponse = await fetch(getApiUrl(`${API_CONFIG.endpoints.sensorsHistory}?hours=24`))
-      if (!historyResponse.ok) {
-        throw new Error(`Error en /history: ${historyResponse.status}`)
-      }
+      if (!historyResponse.ok) throw new Error(`Error en /history: ${historyResponse.status}`)
       const historyJson = await historyResponse.json()
-      
-      if (historyJson.success && historyJson.data) {
-        setHistoryData(historyJson.data)
-      }
+      if (historyJson.success && historyJson.data) setHistoryData(historyJson.data)
 
-      // Obtener estadísticas
       const statsResponse = await fetch(getApiUrl(`${API_CONFIG.endpoints.sensorsStats}?hours=24`))
-      if (!statsResponse.ok) {
-        throw new Error(`Error en /stats: ${statsResponse.status}`)
-      }
+      if (!statsResponse.ok) throw new Error(`Error en /stats: ${statsResponse.status}`)
       const statsJson = await statsResponse.json()
-      
+
       if (statsJson.success && statsJson.data) {
-        // El backend retorna estadísticas por cada métrica
-        // Necesitamos extraer el resumen general
         const statsData = statsJson.data
-        
-        // Crear estructura de stats compatible
-        setStats({
-          count: statsData.humedadSuelo?.stats?.count || 0,
+        setStats(prev => ({
+          count: statsData.humedadSuelo?.stats?.count || prev?.count || 0,
           temperatura: {
-            promedio: statsData.temperatura?.stats?.mean || 0,
-            min: statsData.temperatura?.stats?.min || 0,
-            max: statsData.temperatura?.stats?.max || 0,
+            promedio: statsData.temperatura?.stats?.mean || prev?.temperatura.promedio || 0,
+            min: statsData.temperatura?.stats?.min || prev?.temperatura.min || 0,
+            max: statsData.temperatura?.stats?.max || prev?.temperatura.max || 0,
           },
           humedadSuelo: {
-            promedio: statsData.humedadSuelo?.stats?.mean || 0,
-            min: statsData.humedadSuelo?.stats?.min || 0,
-            max: statsData.humedadSuelo?.stats?.max || 0,
-            tendencia: statsData.humedadSuelo?.trend?.direction || "ESTABLE",
+            promedio: statsData.humedadSuelo?.stats?.mean || prev?.humedadSuelo.promedio || 0,
+            min: statsData.humedadSuelo?.stats?.min || prev?.humedadSuelo.min || 0,
+            max: statsData.humedadSuelo?.stats?.max || prev?.humedadSuelo.max || 0,
+            tendencia: statsData.humedadSuelo?.trend?.direction || prev?.humedadSuelo.tendencia || "ESTABLE",
           },
           humedadAire: {
-            promedio: statsData.humedadAire?.stats?.mean || 0,
-            min: statsData.humedadAire?.stats?.min || 0,
-            max: statsData.humedadAire?.stats?.max || 0,
+            promedio: statsData.humedadAire?.stats?.mean || prev?.humedadAire.promedio || 0,
+            min: statsData.humedadAire?.stats?.min || prev?.humedadAire.min || 0,
+            max: statsData.humedadAire?.stats?.max || prev?.humedadAire.max || 0,
           },
-          totalRiegos: 0, // Calcularemos esto del historial
+          totalRiegos: prev?.totalRiegos || 0,
           consumoTotal: {
-            agua: "0",
-            energia: "0",
+            agua: prev?.consumoTotal.agua || "0",
+            energia: prev?.consumoTotal.energia || "0",
           },
-          ultimoRiego: "N/A",
-        })
+          ultimoRiego: prev?.ultimoRiego || "N/A",
+        }))
       }
-
     } catch (error) {
       console.error("Error fetching sensor data:", error)
       setError(error instanceof Error ? error.message : "Error desconocido")
@@ -144,10 +115,8 @@ export default function Dashboard() {
     return () => clearInterval(interval)
   }, [])
 
-  // Calcular datos adicionales del historial
   useEffect(() => {
     if (historyData.length > 0) {
-      // Calcular total de riegos
       const riegos = historyData.filter(d => d.tiempoRiego > 0)
       const totalAgua = riegos.reduce((sum, r) => sum + r.consumoAgua, 0)
       const totalEnergia = riegos.reduce((sum, r) => sum + r.consumoEnergia, 0)
@@ -176,8 +145,7 @@ export default function Dashboard() {
     }
   }
 
-  // Preparar datos para las gráficas
-  const chartData = historyData.slice(-50).map((item) => ({
+  const chartData = historyData.slice(-50).map(item => ({
     time: formatTime(item.timestamp || item.fecha),
     temperatura: Number(item.temperatura.toFixed(1)),
     humedad: Number(item.humedadSuelo.toFixed(1)),
@@ -185,12 +153,9 @@ export default function Dashboard() {
 
   const getTrendIcon = (tendencia: string) => {
     switch (tendencia) {
-      case "CRECIENTE":
-        return "↑"
-      case "DECRECIENTE":
-        return "↓"
-      default:
-        return "→"
+      case "CRECIENTE": return "↑"
+      case "DECRECIENTE": return "↓"
+      default: return "→"
     }
   }
 
@@ -202,12 +167,9 @@ export default function Dashboard() {
             <Activity className="w-12 h-12 text-destructive mx-auto" />
             <h3 className="text-lg font-semibold">Error de Conexión</h3>
             <p className="text-sm text-muted-foreground">{error}</p>
-            <p className="text-xs text-muted-foreground">
-              Verifica que el backend esté corriendo en http://localhost:3000
-            </p>
+            <p className="text-xs text-muted-foreground">Verifica que el backend esté corriendo en http://localhost:3000</p>
             <Button onClick={fetchData} variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Reintentar
+              <RefreshCw className="w-4 h-4 mr-2" /> Reintentar
             </Button>
           </div>
         </Card>
@@ -221,9 +183,7 @@ export default function Dashboard() {
         <div className="absolute top-10 left-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute top-20 right-20 w-40 h-40 bg-chart-2/5 rounded-full blur-3xl" />
         <div className="absolute bottom-10 left-1/3 w-36 h-36 bg-chart-3/5 rounded-full blur-3xl" />
-
         <PlantScene />
-
         <div className="absolute top-0 left-0 right-0 p-6 z-10">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="backdrop-blur-sm bg-card/30 p-4 rounded-2xl border border-border/50">
@@ -246,7 +206,6 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Current Data Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="p-6 hover:shadow-lg transition-all hover:scale-105 bg-gradient-to-br from-card to-chart-1/10">
             <div className="flex items-center gap-3 mb-3">
@@ -258,11 +217,7 @@ export default function Dashboard() {
             <div className="text-3xl font-bold text-balance">
               {currentData?.temperatura.toFixed(1) || "--"}°C
             </div>
-            {stats && (
-              <div className="text-xs text-muted-foreground mt-2">
-                Promedio: {stats.temperatura.promedio.toFixed(1)}°C
-              </div>
-            )}
+            {stats && <div className="text-xs text-muted-foreground mt-2">Promedio: {stats.temperatura.promedio.toFixed(1)}°C</div>}
           </Card>
 
           <Card className="p-6 hover:shadow-lg transition-all hover:scale-105 bg-gradient-to-br from-card to-chart-2/10">
@@ -292,11 +247,7 @@ export default function Dashboard() {
             <div className="text-3xl font-bold text-balance">
               {currentData?.humedadAire.toFixed(1) || "--"}%
             </div>
-            {stats && (
-              <div className="text-xs text-muted-foreground mt-2">
-                Promedio: {stats.humedadAire.promedio.toFixed(1)}%
-              </div>
-            )}
+            {stats && <div className="text-xs text-muted-foreground mt-2">Promedio: {stats.humedadAire.promedio.toFixed(1)}%</div>}
           </Card>
 
           <Card className="p-6 hover:shadow-lg transition-all hover:scale-105 bg-gradient-to-br from-card to-chart-5/10">
@@ -306,16 +257,11 @@ export default function Dashboard() {
               </div>
               <span className="text-sm text-muted-foreground font-medium">Luz Solar</span>
             </div>
-            <div className="text-3xl font-bold text-balance">
-              {currentData?.luz ? "Sí" : "No"}
-            </div>
-            <div className="text-xs text-muted-foreground mt-2">
-              {currentData?.luz ? "Disponible" : "No detectada"}
-            </div>
+            <div className="text-3xl font-bold text-balance">{currentData?.luz ? "Sí" : "No"}</div>
+            <div className="text-xs text-muted-foreground mt-2">{currentData?.luz ? "Disponible" : "No detectada"}</div>
           </Card>
         </div>
 
-        {/* Charts */}
         <div className="grid md:grid-cols-2 gap-6">
           <Card className="p-6 hover:shadow-xl transition-shadow">
             <h3 className="text-lg font-semibold mb-4 text-balance">Temperatura (últimos datos)</h3>
@@ -323,33 +269,14 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis 
-                    dataKey="time" 
-                    stroke="var(--muted-foreground)" 
-                    fontSize={12}
-                    interval="preserveStartEnd"
-                  />
+                  <XAxis dataKey="time" stroke="var(--muted-foreground)" fontSize={12} interval="preserveStartEnd" />
                   <YAxis stroke="var(--muted-foreground)" fontSize={12} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--card)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="temperatura"
-                    stroke="var(--chart-1)"
-                    strokeWidth={3}
-                    dot={{ fill: "var(--chart-1)", r: 4 }}
-                  />
+                  <Tooltip contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px" }} />
+                  <Line type="monotone" dataKey="temperatura" stroke="var(--chart-1)" strokeWidth={3} dot={{ fill: "var(--chart-1)", r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[250px] flex items-center justify-center text-muted-foreground">
-                No hay datos disponibles
-              </div>
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground">No hay datos disponibles</div>
             )}
           </Card>
 
@@ -359,38 +286,18 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis 
-                    dataKey="time" 
-                    stroke="var(--muted-foreground)" 
-                    fontSize={12}
-                    interval="preserveStartEnd"
-                  />
+                  <XAxis dataKey="time" stroke="var(--muted-foreground)" fontSize={12} interval="preserveStartEnd" />
                   <YAxis stroke="var(--muted-foreground)" fontSize={12} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--card)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="humedad"
-                    stroke="var(--chart-2)"
-                    strokeWidth={3}
-                    dot={{ fill: "var(--chart-2)", r: 4 }}
-                  />
+                  <Tooltip contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px" }} />
+                  <Line type="monotone" dataKey="humedad" stroke="var(--chart-2)" strokeWidth={3} dot={{ fill: "var(--chart-2)", r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[250px] flex items-center justify-center text-muted-foreground">
-                No hay datos disponibles
-              </div>
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground">No hay datos disponibles</div>
             )}
           </Card>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid md:grid-cols-3 gap-4">
           <Card className="p-6 bg-gradient-to-br from-chart-2/20 via-card to-card hover:shadow-xl transition-all">
             <Droplets className="w-8 h-8 text-chart-2 mb-3" />
@@ -416,12 +323,10 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Status Info */}
         {currentData && (
           <Card className="p-4 bg-accent/50">
             <p className="text-sm text-center text-muted-foreground">
-              Última actualización: {currentData.fecha} | 
-              {historyData.length > 0 && ` ${historyData.length} registros en memoria`}
+              Última actualización: {currentData.fecha} | {historyData.length > 0 && ` ${historyData.length} registros en memoria`}
             </p>
           </Card>
         )}
