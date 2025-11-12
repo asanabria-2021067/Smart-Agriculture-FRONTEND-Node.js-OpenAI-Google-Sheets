@@ -22,11 +22,11 @@ export default function Controls() {
     const fetchStatus = async () => {
       try {
         const response = await fetch(getApiUrl(API_CONFIG.endpoints.irrigationStatus))
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
-        
+
         const data = await response.json()
         setIrrigationStatus(data.data)
         setAutoMode(data.data?.autoMode || false)

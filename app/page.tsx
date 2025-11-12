@@ -1,13 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { MessageCircle, Activity, Settings } from "lucide-react"
+import { MessageCircle, Activity, Settings, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Dashboard from "@/components/dashboard"
 import Chat from "@/components/chat"
 import Controls from "@/components/controls"
+import Analysis from "@/components/analysis"
 
-type Tab = "dashboard" | "chat" | "controls"
+type Tab = "dashboard" | "chat" | "controls" | "analysis"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard")
@@ -19,42 +20,54 @@ export default function Home() {
         {activeTab === "dashboard" && <Dashboard />}
         {activeTab === "chat" && <Chat />}
         {activeTab === "controls" && <Controls />}
+        {activeTab === "analysis" && <Analysis />}
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border backdrop-blur-lg bg-opacity-90">
-        <div className="max-w-7xl mx-auto px-4">
+      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border backdrop-blur-lg bg-opacity-90 z-50">
+        <div className="max-w-7xl mx-auto px-2">
           <div className="flex items-center justify-around h-16">
             <button
               onClick={() => setActiveTab("dashboard")}
               className={cn(
-                "flex flex-col items-center gap-1 px-6 py-2 rounded-xl transition-all",
+                "flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all",
                 activeTab === "dashboard" ? "text-primary bg-accent" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <Activity className="w-6 h-6" />
+              <Activity className="w-5 h-5" />
               <span className="text-xs font-medium">Dashboard</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("analysis")}
+              className={cn(
+                "flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all",
+                activeTab === "analysis" ? "text-primary bg-accent" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <TrendingUp className="w-5 h-5" />
+              <span className="text-xs font-medium">Análisis</span>
             </button>
 
             <button
               onClick={() => setActiveTab("chat")}
               className={cn(
-                "flex flex-col items-center gap-1 px-6 py-2 rounded-xl transition-all",
+                "flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all",
                 activeTab === "chat" ? "text-primary bg-accent" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <MessageCircle className="w-6 h-6" />
+              <MessageCircle className="w-5 h-5" />
               <span className="text-xs font-medium">Chat</span>
             </button>
 
             <button
               onClick={() => setActiveTab("controls")}
               className={cn(
-                "flex flex-col items-center gap-1 px-6 py-2 rounded-xl transition-all",
+                "flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all",
                 activeTab === "controls" ? "text-primary bg-accent" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <Settings className="w-6 h-6" />
+              <Settings className="w-5 h-5" />
               <span className="text-xs font-medium">Controles</span>
             </button>
           </div>

@@ -62,7 +62,7 @@ export default function Chat() {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: data.response || "Lo siento, no pude procesar tu mensaje.",
+        content: data.message || "Lo siento, no pude procesar tu mensaje.",
         timestamp: new Date(),
       }
 
@@ -86,8 +86,18 @@ export default function Chat() {
     sendMessage(input)
   }
 
-  const clearChat = () => {
-    setMessages([])
+  const clearChat = async () => {
+    try {
+      await fetch(getApiUrl(API_CONFIG.endpoints.chatClear), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: "user1" }),
+      })
+      setMessages([])
+    } catch (error) {
+      console.error("Error clearing chat:", error)
+      setMessages([])
+    }
   }
 
   return (
