@@ -1,0 +1,322 @@
+{
+  "info": {
+    "_postman_id": "smart-agriculture-2025",
+    "name": "Smart Agriculture API - Pruebas Completas",
+    "description": "Colección completa para probar el backend de riego inteligente.\n\nBase URL: http://localhost:3000\nWebSocket: ws://localhost:3000/ws",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health & Status",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["health"]
+            },
+            "description": "Verifica estado del backend, conexión con Sheets y OpenAI"
+          },
+          "response": []
+        },
+        {
+          "name": "API Root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": [""]
+            },
+            "description": "Lista todos los endpoints disponibles"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sensores",
+      "item": [
+        {
+          "name": "Datos Actuales",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/sensors/current",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "sensors", "current"]
+            },
+            "description": "Última lectura del sensor"
+          },
+          "response": []
+        },
+        {
+          "name": "Historial (24h)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/sensors/history?hours=24",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "sensors", "history"],
+              "query": [
+                {
+                  "key": "hours",
+                  "value": "24"
+                }
+              ]
+            },
+            "description": "Datos de las últimas 24 horas"
+          },
+          "response": []
+        },
+        {
+          "name": "Estadísticas (24h)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/sensors/stats?hours=24",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "sensors", "stats"],
+              "query": [
+                {
+                  "key": "hours",
+                  "value": "24"
+                }
+              ]
+            },
+            "description": "Promedios, mín/máx, tendencia"
+          },
+          "response": []
+        },
+        {
+          "name": "Datos para Gráficas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/sensors/charts?hours=6&type=both",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "sensors", "charts"],
+              "query": [
+                {
+                  "key": "hours",
+                  "value": "6"
+                },
+                {
+                  "key": "type",
+                  "value": "both"
+                }
+              ]
+            },
+            "description": "Datos listos para Chart.js"
+          },
+          "response": []
+        },
+        {
+          "name": "Forzar Actualización",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/sensors/refresh",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "sensors", "refresh"]
+            },
+            "description": "Fuerza lectura inmediata de Google Sheets"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Análisis IA",
+      "item": [
+        {
+          "name": "Análisis Completo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/analysis/complete",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "analysis", "complete"]
+            },
+            "description": "Reporte completo con salud, riego, patrones"
+          },
+          "response": []
+        },
+        {
+          "name": "Predicción de Riego",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/analysis/irrigation-prediction",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "analysis", "irrigation-prediction"]
+            },
+            "description": "¿Necesita riego ahora? ¿Cuánto?"
+          },
+          "response": []
+        },
+        {
+          "name": "Score de Salud",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/analysis/health-score",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "analysis", "health-score"]
+            },
+            "description": "Puntuación 0-100 de la planta"
+          },
+          "response": []
+        },
+        {
+          "name": "Resumen Ejecutivo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/analysis/summary",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "analysis", "summary"]
+            },
+            "description": "Resumen en 1 párrafo"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Chat IA",
+      "item": [
+        {
+          "name": "Preguntar: ¿Cómo está mi planta?",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"test-user-1\",\n  \"message\": \"¿Cómo está mi planta?\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/chat/message",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "chat", "message"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Preguntar: ¿Necesita riego?",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"test-user-1\",\n  \"message\": \"¿Necesita riego ahora?\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/chat/message",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "chat", "message"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Limpiar Historial",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/chat/clear",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "chat", "clear"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Estadísticas del Chat",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/chat/stats",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "chat", "stats"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ]
+}
