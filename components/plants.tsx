@@ -377,9 +377,9 @@ const overview = await apiRequest(API_CONFIG.endpoints.macetas)
         <PlantChatModal
           open={chatOpen}
           onOpenChange={setChatOpen}
-          macetaId={currentPlant.id}
-          plantName={currentPlant.name}
-          plantEmoji={currentPlant.emoji}
+          macetaId={currentPlant?.id}
+          plantName={currentPlant?.name}
+          plantEmoji={currentPlant?.emoji}
         />
       )}
 
