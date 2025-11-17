@@ -3,18 +3,7 @@
 import { cn } from "@/lib/utils"
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import {
-  Send,
-  Bot,
-  User,
-  Trash2,
-  Loader2,
-  Sparkles,
-  Thermometer,
-  Droplets,
-  Wind,
-  HeartPulse,
-} from "lucide-react"
+import { Send, Bot, User, Trash2, Loader2, Sparkles } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -111,82 +100,12 @@ export default function Chat() {
     }
   }
 
-  // 🔍 Función para parsear mensajes enriquecidos
-  const renderMessageContent = (message: Message) => {
-    const { content } = message
-
-    // Detectamos el formato con "Temperatura promedio"
-    if (content.includes("Temperatura promedio")) {
-      // Limpiamos markdown y extraemos las métricas
-      const cleaned = content.replace(/\*\*/g, "")
-      const tempMatch = cleaned.match(/Temperatura promedio:\s*([\d.]+°C)/)
-      const humSueloMatch = cleaned.match(/Humedad del suelo promedio:\s*([\d.]+%)/)
-      const humAireMatch = cleaned.match(/Humedad del aire promedio:\s*([\d.]+%)/)
-      const estadoMatch = cleaned.match(/Estado de salud del sistema:\s*([A-ZÁÉÍÓÚÑ\s]+)\s*\(score:\s*(\d+\/\d+)\)/)
-
-      const resumen = cleaned.split("La humedad del suelo")[1] || ""
-
-      return (
-        <div className="space-y-4">
-          <h3 className="font-semibold text-base">🌱 Estado general de tu planta</h3>
-
-          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
-            {tempMatch && (
-              <Card className="p-3 flex flex-col items-center bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900">
-                <Thermometer className="w-5 h-5 text-orange-600 mb-1" />
-                <p className="text-sm font-medium">Temperatura</p>
-                <span className="text-lg font-bold">{tempMatch[1]}</span>
-              </Card>
-            )}
-            {humSueloMatch && (
-              <Card className="p-3 flex flex-col items-center bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-                <Droplets className="w-5 h-5 text-blue-600 mb-1" />
-                <p className="text-sm font-medium">Humedad del Suelo</p>
-                <span className="text-lg font-bold">{humSueloMatch[1]}</span>
-              </Card>
-            )}
-            {humAireMatch && (
-              <Card className="p-3 flex flex-col items-center bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900">
-                <Wind className="w-5 h-5 text-cyan-600 mb-1" />
-                <p className="text-sm font-medium">Humedad del Aire</p>
-                <span className="text-lg font-bold">{humAireMatch[1]}</span>
-              </Card>
-            )}
-            {estadoMatch && (
-              <Card className="p-3 flex flex-col items-center bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
-                <HeartPulse className="w-5 h-5 text-green-600 mb-1" />
-                <p className="text-sm font-medium">Salud</p>
-                <span className="text-sm font-bold">{estadoMatch[1]}</span>
-                <span className="text-xs text-muted-foreground">{estadoMatch[2]}</span>
-              </Card>
-            )}
-          </div>
-
-          {resumen && (
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {resumen.trim()}
-            </p>
-          )}
-        </div>
-      )
-    }
-
-    // Si no hay formato especial → mostramos con negritas HTML
-    const formatted = content
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-      .replace(/^- /gm, "• ")
-
-    return <div dangerouslySetInnerHTML={{ __html: formatted }} className="text-sm leading-relaxed" />
-  }
-
   return (
     <div className="h-screen flex flex-col bg-gradient-to-b from-background via-accent/20 to-background relative overflow-hidden">
-      {/* Efectos visuales */}
       <div className="absolute top-20 left-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl" />
       <div className="absolute top-40 right-20 w-40 h-40 bg-chart-2/5 rounded-full blur-3xl" />
       <div className="absolute bottom-40 left-1/4 w-36 h-36 bg-chart-3/5 rounded-full blur-3xl" />
 
-      {/* Header */}
       <div className="border-b border-border bg-card/80 backdrop-blur-xl shadow-lg relative z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -217,7 +136,7 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Chat content */}
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6 relative z-10">
         <div className="max-w-4xl mx-auto space-y-4">
           {messages.length === 0 && (
@@ -272,7 +191,6 @@ export default function Chat() {
                   <Bot className="w-5 h-5 text-muted-foreground" />
                 )}
               </div>
-
               <div className={cn("flex-1 max-w-[80%]", message.role === "user" ? "items-end" : "items-start")}>
                 <Card
                   className={cn(
@@ -282,7 +200,7 @@ export default function Chat() {
                       : "bg-card border-border/50",
                   )}
                 >
-                  {renderMessageContent(message)}
+                  <p className="text-sm leading-relaxed">{message.content}</p>
                 </Card>
                 <p className="text-xs text-muted-foreground mt-1.5 px-2">
                   {message.timestamp.toLocaleTimeString("es-ES", {
@@ -312,17 +230,18 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Input */}
       <div className="border-t border-border bg-card/90 backdrop-blur-xl shadow-2xl p-4 relative z-10">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
           <div className="flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Escribe tu mensaje..."
-              disabled={loading}
-              className="pr-4 h-12 border-2 focus:border-primary/50 bg-background/50"
-            />
+            <div className="flex-1 relative">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Escribe tu mensaje..."
+                disabled={loading}
+                className="pr-4 h-12 border-2 focus:border-primary/50 bg-background/50"
+              />
+            </div>
             <Button
               type="submit"
               disabled={loading || !input.trim()}

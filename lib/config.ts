@@ -100,10 +100,64 @@ export const API_CONFIG = {
     // Response: { success: true, timestamp, current, trends, stats24h, irrigation, alerts, healthScore }
     analysisSummary: "/api/analysis/summary",
 
+    // === macetas/MACETAS ENDPOINTS ===
+    // GET /api/macetas - Listar todas las macetas
+    // Response: { success: true, data: Pot[] }
+    macetas: "/api/macetas",
+
+    // GET /api/macetas/:id - Obtener maceta específica
+    // Response: { success: true, data: Pot }
+    pot: "/api/macetas/:id",
+
+    // GET /api/macetas/:id/profile - Perfil completo de una maceta
+    // Response: { success: true, data: { id, name, species, personality, health, stats, preferences } }
+    potProfile: "/api/macetas/:id/profile",
+
+    // GET /api/macetas/:id/stats - Estadísticas de una maceta
+    // Response: { success: true, data: { current, history, analysis } }
+    macetastats: "/api/macetas/:id/stats",
+
+    // GET /api/macetas/:id/current - Datos actuales de sensores de una maceta
+    // Response: { success: true, data: SensorData }
+    potCurrent: "/api/macetas/:id/current",
+
+    // GET /api/macetas/:id/history?hours=24 - Historial de una maceta
+    // Response: { success: true, data: SensorData[] }
+    potHistory: "/api/macetas/:id/history",
+
+    // GET /api/macetas/:id/analysis - Análisis de una maceta
+    // Response: { success: true, data: { health, recommendations, alerts } }
+    potAnalysis: "/api/macetas/:id/analysis",
+
+    // POST /api/macetas/:id/water - Registrar riego manual
+    // Body: { amount: number, duration: number }
+    // Response: { success: true, message: string }
+    potWater: "/api/macetas/:id/water",
+
+    // PUT /api/macetas/:id - Actualizar maceta
+    // Body: { name?: string, species?: string, personality?: string }
+    // Response: { success: true, data: Pot }
+    potUpdate: "/api/macetas/:id",
+
+    // === CHAT POR MACETA ENDPOINTS ===
+    // POST /api/macetas/:id/chat - Enviar mensaje a una planta específica
+    // Body: { message: string, userId?: string }
+    // Response: { success: true, response: string, context: {...} }
+    potChat: "/api/macetas/:id/chat",
+
+    // GET /api/macetas/:id/chat/history - Historial de chat con una planta
+    // Response: { success: true, data: ChatMessage[] }
+    potChatHistory: "/api/macetas/:id/chat/history",
+
+    // POST /api/macetas/:id/chat/clear - Limpiar historial de chat con una planta
+    // Response: { success: true, message: string }
+    potChatClear: "/api/macetas/:id/chat/clear",
+
     // === SYSTEM ENDPOINTS ===
     // GET /health
     // Response: { status, service, version, timestamp, components, dataCache }
     health: "/health",
+
     // === ROBOTIC ARM ENDPOINTS ===
     servo: {
       // Control individual de servos
@@ -125,6 +179,20 @@ export function getApiUrl(endpoint: string): string {
 }
 
 /**
+ * Helper para construir URLs de endpoints de macetas individuales
+ * Reemplaza :id en la ruta con el ID de la maceta
+ */
+export function getPotApiUrl(endpoint: string, potId: number): string {
+  const url = endpoint.replace(":id", potId.toString());
+  return getApiUrl(url);
+}
+
+/**
+ * Alias de getPotApiUrl para compatibilidad
+ */
+export const getMacetaApiUrl = getPotApiUrl;
+
+/**
  * Helper para hacer peticiones con manejo de errores
  */
 export async function apiRequest<T>(
@@ -132,7 +200,7 @@ export async function apiRequest<T>(
   options?: RequestInit
 ): Promise<{ success: boolean; data?: T; error?: string }> {
   try {
-    console.log("➡️ API request to:", getApiUrl(endpoint), options); // 👈 agrega esto
+    console.log("➡️ API request to:", getApiUrl(endpoint), options);
 
     const response = await fetch(getApiUrl(endpoint), {
       ...options,
@@ -157,7 +225,6 @@ export async function apiRequest<T>(
   }
 }
 
-
 /**
  * Tipos de datos comunes
  */
@@ -179,4 +246,37 @@ export interface ApiResponse<T = any> {
   error?: string;
   message?: string;
   timestamp?: string;
+}
+
+export interface Pot {
+  id: number;
+  name: string;
+  species: string;
+  personality: string;
+  plantedDate: string;
+  health: number;
+  mood: string;
+  avatar?: string;
+}
+
+export interface PotProfile extends Pot {
+  stats: {
+    totalWaterings: number;
+    averageHealth: number;
+    daysAlive: number;
+  };
+  preferences: {
+    optimalTemp: { min: number; max: number };
+    optimalHumidity: { min: number; max: number };
+    wateringFrequency: string;
+  };
+}
+
+export interface ChatMessage {
+  id: string;
+  potId: number;
+  userId?: string;
+  message: string;
+  response: string;
+  timestamp: string;
 }
