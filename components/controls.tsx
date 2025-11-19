@@ -32,20 +32,22 @@ export default function Controls() {
   const [upperAngle, setUpperAngle] = useState(90);
 
   // === Servo base (360°) ===
-  const handleBaseMove = async (direction: "left" | "right" | "stop") => {
-    setIsMoving(direction !== "stop");
-    await apiRequest(API_CONFIG.endpoints.servo.base, {
+  const handleBaseMove = async (direction: "left" | "right") => {
+  setIsMoving(true);
+  console.log("Sending direction:", direction); // Debug log
+  try {
+    const response = await apiRequest(API_CONFIG.endpoints.servo.base, {
       method: "POST",
       body: JSON.stringify({ direction }),
     });
-  };
+    console.log("Response:", response); // Debug log
+  } catch (error) {
+    console.error("Error moving base:", error);
+  } finally {
+    setIsMoving(false);
+  }
+};
 
-  const handleBaseStop = async () => {
-    await apiRequest(API_CONFIG.endpoints.servo.base, {
-      method: "POST",
-      body: JSON.stringify({ direction: "stop" }),
-    });
-  };
   // === Servo brazo inferior (180°) ===
   const handleLowerMove = async (delta: number) => {
     const newAngle = Math.max(0, Math.min(180, lowerAngle + delta));
@@ -241,7 +243,7 @@ export default function Controls() {
             <Button
               variant="outline"
               className="h-16"
-              onMouseDown={() => handleLowerMove(-10)}
+              onClick={() => handleLowerMove(-10)}
             >
               <ArrowUp className="w-6 h-6" />
             </Button>
@@ -250,8 +252,7 @@ export default function Controls() {
             <Button
               variant="outline"
               className="h-16"
-              onMouseDown={() => handleBaseMove("left")}
-              onMouseUp={() => handleBaseMove("stop")}
+              onClick={() => handleBaseMove("left")}
             >
               <ArrowLeft className="w-6 h-6" />
             </Button>
@@ -259,8 +260,7 @@ export default function Controls() {
             <Button
               variant="outline"
               className="h-16"
-              onMouseDown={() => handleBaseMove("right")}
-              onMouseUp={() => handleBaseMove("stop")}
+              onClick={() => handleBaseMove("right")}
             >
               <ArrowRight className="w-6 h-6" />
             </Button>
@@ -269,7 +269,7 @@ export default function Controls() {
             <Button
               variant="outline"
               className="h-16"
-              onMouseDown={() => handleLowerMove(10)}
+              onClick={() => handleLowerMove(10)}
             >
               <ArrowDown className="w-6 h-6" />
             </Button>
@@ -284,16 +284,15 @@ export default function Controls() {
               </label>
               <input
                 type="range"
-                min={0}
-                max={65}
+                min={105}
+                max={155}
                 value={lowerAngle}
                 onChange={(e) => {
                   const angle = Number(e.target.value);
                   setLowerAngle(angle);
                   handleLowerMove(angle - lowerAngle);
                 }}
-                className="w-full mt-1"
-              />
+                className="w-full mt-1"                                               />
             </div>
 
             <div>
