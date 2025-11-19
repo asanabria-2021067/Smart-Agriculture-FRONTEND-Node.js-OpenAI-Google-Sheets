@@ -28,8 +28,8 @@ export default function Controls() {
   const [isWatering, setIsWatering] = useState(false);
   const [irrigationStatus, setIrrigationStatus] = useState<any>(null);
   const [isMoving, setIsMoving] = useState(false);
-  const [lowerAngle, setLowerAngle] = useState(65);
-  const [upperAngle, setUpperAngle] = useState(90);
+  const [lowerAngle, setLowerAngle] = useState(155);
+  const [upperAngle, setUpperAngle] = useState(65);
 
   // === Servo base (360°) ===
   const handleBaseMove = async (direction: "left" | "right") => {
@@ -285,7 +285,7 @@ export default function Controls() {
               <input
                 type="range"
                 min={105}
-                max={155}
+                max={165}
                 value={lowerAngle}
                 onChange={(e) => {
                   const angle = Number(e.target.value);
