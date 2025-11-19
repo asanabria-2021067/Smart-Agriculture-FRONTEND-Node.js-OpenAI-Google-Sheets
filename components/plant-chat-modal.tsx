@@ -61,33 +61,43 @@ export default function PlantChatModal({
   const loadHistory = async () => {
     try {
       setError(null)
-      const response = await apiRequest(
-        getMacetaApiUrl(API_CONFIG.endpoints.macetaChatHistory, macetaId) + "?limit=20"
-      )
+      
+      // ✅ FIX: Usar la ruta correcta del backend
+      // El backend espera: /api/chat/maceta/:id/history
+      const url = `/api/chat/maceta/${macetaId}/history?limit=20`
+      const response = await apiRequest(url)
+      
+      console.log('📜 Chat history response:', response)
       
       if (response.success && response.messages) {
-        const history = response.messages.map((msg: any) => ({
-          id: msg.id,
-          role: "user" as const,
-          content: msg.userMessage,
-          timestamp: new Date(msg.timestamp),
-        }))
+        // Convertir los mensajes del backend al formato del frontend
+        const formattedMessages: Message[] = []
         
-        const botMessages = response.messages.map((msg: any, idx: number) => ({
-          id: msg.id + "-bot",
-          role: "assistant" as const,
-          content: msg.botResponse,
-          timestamp: new Date(new Date(msg.timestamp).getTime() + 1000),
-        }))
+        response.messages.forEach((msg: any) => {
+          // Agregar mensaje del usuario
+          formattedMessages.push({
+            id: msg.id,
+            role: "user",
+            content: msg.userMessage,
+            timestamp: new Date(msg.timestamp)
+          })
+          
+          // Agregar respuesta del bot
+          formattedMessages.push({
+            id: msg.id + "-bot",
+            role: "assistant",
+            content: msg.botResponse,
+            timestamp: new Date(new Date(msg.timestamp).getTime() + 1000)
+          })
+        })
         
-        const combined = [...history, ...botMessages].sort(
-          (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
-        )
+        // Ordenar por timestamp
+        formattedMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
         
-        setMessages(combined)
+        setMessages(formattedMessages)
       }
     } catch (error) {
-      console.error("Error loading history:", error)
+      console.error("❌ Error loading history:", error)
     }
   }
 
@@ -107,25 +117,31 @@ export default function PlantChatModal({
     setError(null)
 
     try {
-      const response = await apiRequest(
-        getMacetaApiUrl(API_CONFIG.endpoints.macetaChatMessage, macetaId),
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text }),
+      // ✅ FIX: Usar la ruta correcta del backend
+      // El backend espera: POST /api/chat/maceta/:id/message
+      const url = `/api/chat/maceta/${macetaId}/message`
+      const response = await apiRequest(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      })
+
+      console.log('💬 Chat response:', response)
+
+      if (response.success && response.message) {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: response.message,
+          timestamp: new Date(),
         }
-      )
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: response.message || "Lo siento, no pude procesar tu mensaje.",
-        timestamp: new Date(),
+        setMessages((prev) => [...prev, assistantMessage])
+      } else {
+        throw new Error(response.error || 'No se recibió respuesta')
       }
-
-      setMessages((prev) => [...prev, assistantMessage])
     } catch (error) {
-      console.error("Error sending message:", error)
+      console.error("❌ Error sending message:", error)
       setError(error instanceof Error ? error.message : "Error de conexión")
       
       const errorMessage: Message = {
@@ -147,14 +163,16 @@ export default function PlantChatModal({
 
   const clearChat = async () => {
     try {
-      await apiRequest(
-        getMacetaApiUrl(API_CONFIG.endpoints.macetaChatClear, macetaId),
-        { method: "DELETE" }
-      )
+      // ✅ FIX: Usar la ruta correcta del backend
+      // El backend espera: DELETE /api/chat/maceta/:id/clear
+      const url = `/api/chat/maceta/${macetaId}/clear`
+      await apiRequest(url, { method: "DELETE" })
+      
       setMessages([])
       setError(null)
     } catch (error) {
-      console.error("Error clearing chat:", error)
+      console.error("❌ Error clearing chat:", error)
+      // Limpiar localmente aunque falle
       setMessages([])
     }
   }
@@ -215,6 +233,7 @@ export default function PlantChatModal({
                     size="sm"
                     onClick={() => sendMessage(suggestion)}
                     className="rounded-full"
+                    disabled={loading}
                   >
                     {suggestion}
                   </Button>

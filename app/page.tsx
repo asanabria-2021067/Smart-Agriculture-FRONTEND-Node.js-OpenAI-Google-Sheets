@@ -9,7 +9,7 @@ import Chat from "@/components/chat"
 import Controls from "@/components/controls"
 import Analysis from "@/components/analysis"
 
-type Tab = "plants" | "dashboard" | "chat" | "controls" | "analysis"
+type Tab =   "dashboard" | "chat"| "plants" | "controls" | "analysis"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("plants")
@@ -18,9 +18,9 @@ export default function Home() {
     <main className="min-h-screen flex flex-col pb-20">
       {/* Content */}
       <div className="flex-1">
-        {activeTab === "plants" && <Plants />}
         {activeTab === "dashboard" && <Dashboard />}
         {activeTab === "chat" && <Chat />}
+        {activeTab === "plants" && <Plants />}
         {activeTab === "controls" && <Controls />}
         {activeTab === "analysis" && <Analysis />}
       </div>
@@ -29,16 +29,7 @@ export default function Home() {
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border backdrop-blur-lg bg-opacity-90 z-50">
         <div className="max-w-7xl mx-auto px-2">
           <div className="flex items-center justify-around h-16">
-            <button
-              onClick={() => setActiveTab("plants")}
-              className={cn(
-                "flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all",
-                activeTab === "plants" ? "text-primary bg-accent" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Leaf className="w-5 h-5" />
-              <span className="text-xs font-medium">Plantas</span>
-            </button>
+           
 
             <button
               onClick={() => setActiveTab("dashboard")}
@@ -60,6 +51,17 @@ export default function Home() {
             >
               <TrendingUp className="w-5 h-5" />
               <span className="text-xs font-medium">Análisis</span>
+            </button>
+
+ <button
+              onClick={() => setActiveTab("plants")}
+              className={cn(
+                "flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all",
+                activeTab === "plants" ? "text-primary bg-accent" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Leaf className="w-5 h-5" />
+              <span className="text-xs font-medium">Plantas</span>
             </button>
 
             <button

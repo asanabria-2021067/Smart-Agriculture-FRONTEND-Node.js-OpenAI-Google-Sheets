@@ -1,544 +1,371 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { AlertTriangle, TrendingUp, TrendingDown, Minus, Droplets, Thermometer, Wind, RefreshCw, Brain, Target, AlertCircle, CheckCircle2, Clock, BarChart3 } from 'lucide-react'
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { cn } from "@/lib/utils"
-import { API_CONFIG, getApiUrl } from "@/lib/config"
+import { useState, useEffect } from "react";
+import {
+  Brain, Droplets, Thermometer, Flower2, AlertTriangle,
+  TrendingUp, TrendingDown, Minus, RefreshCw, Target,
+  Clock, Activity, Sparkles, AlertCircle, CheckCircle2,
+  BarChart3, Leaf, Sun, CloudRain, Wind, Zap
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+import { API_CONFIG, getApiUrl } from "@/lib/config";
 
-interface HealthScore {
-  overallScore: number
-  status: string
-  components: {
-    temperatura: { score: number; status: string }
-    humedad: { score: number; status: string }
-  }
-  recommendations: Array<{
-    priority: string
-    action: string
-    reason: string
-  }>
+interface Maceta {
+  macetaId: number;
+  name: string;
+  emoji: string;
+  healthScore?: number;
+  mood?: string;
+  needsWater?: boolean;
+  lastUpdate?: string;
 }
 
-interface IrrigationPrediction {
-  needed: boolean
-  confidence: number
-  recommendation?: {
-    duration: number
-    timing: string
-  }
-  reasoning: string[]
+interface HealthData {
+  success: boolean;
+  macetaId: number;
+  overallScore: number;
+  status: string;
+  components: any;
+  recommendations: any[];
+  period: { hours: number; dataPoints: number };
 }
 
-interface Anomaly {
-  timestamp: string
-  value: number
-  expectedRange: { min: number; max: number }
-  deviation: number
+interface PredictionData {
+  success: boolean;
+  prediction: {
+    needed: boolean;
+    confidence: number;
+    recommendation?: { duration: number };
+    reasons: string[];
+  };
 }
 
-interface CompleteAnalysis {
-  temperatura: any
-  humedadSuelo: any
-  humedadAire: any
+interface AnomaliesData {
+  success: boolean;
+  anomaliesFound: number;
+  anomalies: any[];
+}
+
+interface PatternsData {
+  success: boolean;
+  available: boolean;
+  patterns?: any;
+  insights?: any;
 }
 
 export default function Analysis() {
-  const [loading, setLoading] = useState(true)
-  const [healthScore, setHealthScore] = useState<HealthScore | null>(null)
-  const [prediction, setPrediction] = useState<IrrigationPrediction | null>(null)
-  const [anomalies, setAnomalies] = useState<any>(null)
-  const [completeAnalysis, setCompleteAnalysis] = useState<CompleteAnalysis | null>(null)
-  const [dailyPatterns, setDailyPatterns] = useState<any>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchAllAnalysis = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const [health, pred, anom, complete, patterns] = await Promise.all([
-        fetch(getApiUrl(`${API_CONFIG.endpoints.analysisHealthScore}?hours=24`)).then((r) => {
-          if (!r.ok) throw new Error(`Error en health score: ${r.status}`)
-          return r.json()
-        }),
-        fetch(getApiUrl(`${API_CONFIG.endpoints.analysisIrrigationPrediction}?hours=6`)).then((r) => {
-          if (!r.ok) throw new Error(`Error en predicción: ${r.status}`)
-          return r.json()
-        }),
-        fetch(getApiUrl(`${API_CONFIG.endpoints.analysisAnomalies}?hours=24&field=humedadSuelo`)).then((r) => {
-          if (!r.ok) throw new Error(`Error en anomalías: ${r.status}`)
-          return r.json()
-        }),
-        fetch(getApiUrl(`${API_CONFIG.endpoints.analysisComplete}?hours=24`)).then((r) => {
-          if (!r.ok) throw new Error(`Error en análisis completo: ${r.status}`)
-          return r.json()
-        }),
-        fetch(getApiUrl(`${API_CONFIG.endpoints.analysisDailyPatterns}?hours=48`)).then((r) => {
-          if (!r.ok) throw new Error(`Error en patrones: ${r.status}`)
-          return r.json()
-        }),
-      ])
-
-      setHealthScore(health)
-      setPrediction(pred.prediction)
-      setAnomalies(anom)
-      setCompleteAnalysis(complete.analysis)
-      setDailyPatterns(patterns.patterns)
-    } catch (error) {
-      console.error("Error fetching analysis:", error)
-      setError(error instanceof Error ? error.message : "Error de conexión con el backend")
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [macetas, setMacetas] = useState<Maceta[]>([]);
+  const [selectedMaceta, setSelectedMaceta] = useState<string>("");
+  const [health, setHealth] = useState<HealthData | null>(null);
+  const [prediction, setPrediction] = useState<PredictionData | null>(null);
+  const [anomalies, setAnomalies] = useState<AnomaliesData | null>(null);
+  const [patterns, setPatterns] = useState<PatternsData | null>(null);
+  const [currentStats, setCurrentStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAllAnalysis()
-    const interval = setInterval(fetchAllAnalysis, 30000)
-    return () => clearInterval(interval)
-  }, [])
+    fetch(getApiUrl(API_CONFIG.endpoints.macetas))
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && res.data?.length > 0) {
+          setMacetas(res.data);
+          setSelectedMaceta(res.data[0].macetaId.toString());
+        }
+      });
+  }, []);
 
-  const getTrendIcon = (direction: string) => {
-    switch (direction) {
-      case "CRECIENTE":
-        return <TrendingUp className="w-4 h-4 text-chart-1" />
-      case "DECRECIENTE":
-        return <TrendingDown className="w-4 h-4 text-chart-2" />
-      default:
-        return <Minus className="w-4 h-4 text-muted-foreground" />
+  const fetchAllData = async (id: string) => {
+    if (!id) return;
+    setLoading(true);
+
+    try {
+      const [healthRes, predRes, anomaliesRes, patternsRes, currentRes] = await Promise.all([
+        fetch(`${getApiUrl(API_CONFIG.endpoints.macetaAnalysisHealthScore(parseInt(id)))}?hours=48`),
+        fetch(`${getApiUrl(API_CONFIG.endpoints.macetaAnalysisIrrigation(parseInt(id)))}?hours=6`),
+        fetch(`${getApiUrl(API_CONFIG.endpoints.macetaAnalysisAnomalies(parseInt(id)))}?hours=72&field=humedadSuelo`),
+        fetch(`${getApiUrl(API_CONFIG.endpoints.macetaAnalysisPatterns(parseInt(id)))}?hours=168`),
+        fetch(getApiUrl(API_CONFIG.endpoints.potCurrent(parseInt(id)))),
+      ]);
+
+      if (healthRes.ok) setHealth(await healthRes.json());
+      if (predRes.ok) setPrediction(await predRes.json());
+      if (anomaliesRes.ok) setAnomalies(await anomaliesRes.json());
+      if (patternsRes.ok) setPatterns(await patternsRes.json());
+      if (currentRes.ok) setCurrentStats((await currentRes.json()).data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
+
+  useEffect(() => {
+    if (selectedMaceta) fetchAllData(selectedMaceta);
+  }, [selectedMaceta]);
+
+  const currentMaceta = macetas.find(m => m.macetaId.toString() === selectedMaceta);
 
   const getStatusColor = (status: string) => {
-    const statusMap: Record<string, string> = {
-      EXCELENTE: "text-green-600 bg-green-100 dark:bg-green-950",
-      BUENO: "text-blue-600 bg-blue-100 dark:bg-blue-950",
-      REGULAR: "text-yellow-600 bg-yellow-100 dark:bg-yellow-950",
-      MALO: "text-orange-600 bg-orange-100 dark:bg-orange-950",
-      CRÍTICO: "text-red-600 bg-red-100 dark:bg-red-950",
-    }
-    return statusMap[status] || "text-muted-foreground bg-muted"
-  }
+    const map: Record<string, string> = {
+      EXCELENTE: "bg-emerald-500",
+      BUENO: "bg-cyan-500",
+      REGULAR: "bg-yellow-500",
+      MALO: "bg-orange-500",
+      CRÍTICO: "bg-red-600",
+    };
+    return map[status] || "bg-gray-500";
+  };
 
-  const getPriorityColor = (priority: string) => {
-    const priorityMap: Record<string, string> = {
-      CRITICAL: "text-red-600 bg-red-100 dark:bg-red-950",
-      HIGH: "text-orange-600 bg-orange-100 dark:bg-orange-950",
-      MEDIUM: "text-yellow-600 bg-yellow-100 dark:bg-yellow-950",
-      LOW: "text-blue-600 bg-blue-100 dark:bg-blue-950",
-    }
-    return priorityMap[priority] || "text-muted-foreground bg-muted"
-  }
-
-  if (error && !healthScore && !prediction && !completeAnalysis) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="p-8 max-w-md w-full text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-            <AlertCircle className="w-8 h-8 text-destructive" />
-          </div>
-          <div>
-            <h3 className="text-xl font-semibold mb-2">Error al Cargar Análisis</h3>
-            <p className="text-sm text-muted-foreground mb-1">{error}</p>
-            <p className="text-xs text-muted-foreground mt-3">
-              Verifica que el backend esté corriendo en:
-            </p>
-            <code className="block mt-2 text-xs bg-muted p-2 rounded">
-              http://localhost:3000
-            </code>
-          </div>
-          <Button onClick={fetchAllAnalysis} className="w-full" disabled={loading}>
-            <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
-            {loading ? "Conectando..." : "Reintentar"}
-          </Button>
-        </Card>
-      </div>
-    )
-  }
-
-  if (loading && !healthScore) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <RefreshCw className="w-12 h-12 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Analizando datos...</p>
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center">
+        <div className="text-center">
+          <Leaf className="w-24 h-24 text-emerald-600 animate-pulse mx-auto mb-6" />
+          <p className="text-3xl font-bold text-gray-700">Analizando a {currentMaceta?.name}...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 space-y-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none opacity-30">
+        <div className="absolute top-20 left-20 w-96 h-96 bg-emerald-300 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-10 right-10 w-80 h-80 bg-cyan-300 rounded-full blur-3xl animate-pulse delay-1000" />
+      </div>
+
+      <div className="relative z-10 p-6 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-10">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2 text-balance">Análisis Avanzado</h1>
-            <p className="text-muted-foreground">Estadísticas detalladas y predicciones inteligentes</p>
+            <h1 className="text-6xl font-black text-gray-800 flex items-center gap-4">
+              <Brain className="w-16 h-16 text-emerald-600" />
+              Análisis Inteligente
+            </h1>
+            <p className="text-2xl text-gray-600 mt-2">Todo sobre tu planta</p>
           </div>
-          <Button
-            onClick={fetchAllAnalysis}
-            variant="outline"
-            size="icon"
-            className="hover:scale-110 transition-transform bg-transparent"
-          >
-            <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
-          </Button>
+
+          <div className="flex items-center gap-4">
+            <Select value={selectedMaceta} onValueChange={setSelectedMaceta}>
+              <SelectTrigger className="w-80 text-lg font-medium bg-white/95 backdrop-blur shadow-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {macetas.map(m => (
+                  <SelectItem key={m.macetaId} value={m.macetaId.toString()}>
+                    <div className="flex items-center gap-4">
+                      <span className="text-4xl">{m.emoji}</span>
+                      <div>
+                        <p className="font-bold text-lg">{m.name}</p>
+                        <p className="text-sm text-gray-500">Maceta {m.macetaId} • {m.mood || "Feliz"}</p>
+                      </div>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button size="lg" onClick={() => fetchAllData(selectedMaceta)} className="shadow-xl">
+              <RefreshCw className={cn("w-6 h-6", loading && "animate-spin")} />
+            </Button>
+          </div>
         </div>
 
-        {error && (healthScore || prediction || completeAnalysis) && (
-          <Card className="p-4 bg-destructive/10 border-destructive/20">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-destructive" />
-              <div className="flex-1">
-                <p className="text-sm font-medium">Problema al actualizar datos</p>
-                <p className="text-xs text-muted-foreground">Mostrando análisis anterior. {error}</p>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Health Score Card */}
-        {healthScore && (
-          <Card className="p-6 bg-gradient-to-br from-card to-accent/20">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-primary/20">
-                  <Brain className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-balance">Estado de Salud General</h2>
-                  <p className="text-sm text-muted-foreground">Score calculado de múltiples factores</p>
-                </div>
-              </div>
-              <Badge className={cn("text-lg px-4 py-2", getStatusColor(healthScore.status))}>
-                {healthScore.status}
-              </Badge>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-4 mb-6">
-              <Card className="p-4 bg-gradient-to-br from-primary/10 to-card">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Score General</span>
-                  <Target className="w-4 h-4 text-primary" />
-                </div>
-                <div className="text-3xl font-bold text-balance">{healthScore.overallScore}/100</div>
-              </Card>
-
-              <Card className="p-4 bg-gradient-to-br from-chart-1/10 to-card">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Temperatura</span>
-                  <Thermometer className="w-4 h-4 text-chart-1" />
-                </div>
-                <div className="text-3xl font-bold text-balance">{healthScore.components.temperatura.score}/100</div>
-                <Badge variant="outline" className="mt-2 text-xs">
-                  {healthScore.components.temperatura.status}
-                </Badge>
-              </Card>
-
-              <Card className="p-4 bg-gradient-to-br from-chart-2/10 to-card">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Humedad</span>
-                  <Droplets className="w-4 h-4 text-chart-2" />
-                </div>
-                <div className="text-3xl font-bold text-balance">{healthScore.components.humedad.score}/100</div>
-                <Badge variant="outline" className="mt-2 text-xs">
-                  {healthScore.components.humedad.status}
-                </Badge>
-              </Card>
-            </div>
-
-            {/* Recommendations */}
-            {healthScore.recommendations.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="font-semibold flex items-center gap-2 mb-3">
-                  <AlertCircle className="w-4 h-4" />
-                  Recomendaciones
-                </h3>
-                {healthScore.recommendations.map((rec, idx) => (
-                  <div key={idx} className="flex items-start gap-3 p-3 bg-accent/50 rounded-lg">
-                    <Badge className={cn("shrink-0 mt-0.5", getPriorityColor(rec.priority))}>{rec.priority}</Badge>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{rec.action}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{rec.reason}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        )}
-
-        {/* Irrigation Prediction */}
-        {prediction && (
-          <Card className="p-6 bg-gradient-to-br from-card to-chart-2/10">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 rounded-xl bg-chart-2/20">
-                <Droplets className="w-6 h-6 text-chart-2" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-balance">Predicción de Riego</h2>
-                <p className="text-sm text-muted-foreground">Basado en análisis de los últimos datos</p>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <Card className="p-4 bg-card">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">¿Se necesita riego?</span>
-                  {prediction.needed ? (
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="text-2xl font-bold">{prediction.needed ? "Sí" : "No"}</div>
-                <Badge variant="outline" className="mt-2">
-                  Confianza: {prediction.confidence}%
-                </Badge>
-              </Card>
-
-              {prediction.recommendation && (
-                <Card className="p-4 bg-card">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Duración Recomendada</span>
-                    <Clock className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="text-2xl font-bold">{prediction.recommendation.duration}s</div>
-                  <Badge variant="outline" className="mt-2">
-                    {prediction.recommendation.timing}
-                  </Badge>
-                </Card>
-              )}
-            </div>
-
-            {prediction.reasoning && prediction.reasoning.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm">Razonamiento:</h3>
-                {prediction.reasoning.map((reason, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <span className="text-primary">•</span>
-                    <span>{reason}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        )}
-
-        {/* Tabs for detailed analysis */}
-        <Tabs defaultValue="complete" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="complete">Análisis Completo</TabsTrigger>
-            <TabsTrigger value="anomalies">Anomalías</TabsTrigger>
-            <TabsTrigger value="patterns">Patrones Diarios</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="complete" className="space-y-4">
-            {completeAnalysis && (
-              <div className="grid md:grid-cols-3 gap-4">
-                {/* Temperature Analysis */}
-                <Card className="p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Thermometer className="w-5 h-5 text-chart-1" />
-                    <h3 className="font-semibold">Temperatura</h3>
-                  </div>
-                  {completeAnalysis.temperatura && (
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Promedio:</span>
-                        <span className="font-medium">{completeAnalysis.temperatura.stats?.mean?.toFixed(1)}°C</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Mín/Máx:</span>
-                        <span className="font-medium">
-                          {completeAnalysis.temperatura.stats?.min?.toFixed(1)}° /{" "}
-                          {completeAnalysis.temperatura.stats?.max?.toFixed(1)}°
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Tendencia:</span>
-                        <div className="flex items-center gap-1">
-                          {getTrendIcon(completeAnalysis.temperatura.trend?.direction)}
-                          <span className="font-medium">{completeAnalysis.temperatura.trend?.direction}</span>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="w-full justify-center mt-2">
-                        {completeAnalysis.temperatura.health?.status}
-                      </Badge>
-                    </div>
-                  )}
-                </Card>
-
-                {/* Soil Humidity Analysis */}
-                <Card className="p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Droplets className="w-5 h-5 text-chart-2" />
-                    <h3 className="font-semibold">Humedad Suelo</h3>
-                  </div>
-                  {completeAnalysis.humedadSuelo && (
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Promedio:</span>
-                        <span className="font-medium">{completeAnalysis.humedadSuelo.stats?.mean?.toFixed(1)}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Mín/Máx:</span>
-                        <span className="font-medium">
-                          {completeAnalysis.humedadSuelo.stats?.min?.toFixed(1)}% /{" "}
-                          {completeAnalysis.humedadSuelo.stats?.max?.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Tendencia:</span>
-                        <div className="flex items-center gap-1">
-                          {getTrendIcon(completeAnalysis.humedadSuelo.trend?.direction)}
-                          <span className="font-medium">{completeAnalysis.humedadSuelo.trend?.direction}</span>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="w-full justify-center mt-2">
-                        {completeAnalysis.humedadSuelo.health?.status}
-                      </Badge>
-                    </div>
-                  )}
-                </Card>
-
-                {/* Air Humidity Analysis */}
-                <Card className="p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Wind className="w-5 h-5 text-chart-3" />
-                    <h3 className="font-semibold">Humedad Aire</h3>
-                  </div>
-                  {completeAnalysis.humedadAire && (
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Promedio:</span>
-                        <span className="font-medium">{completeAnalysis.humedadAire.stats?.mean?.toFixed(1)}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Mín/Máx:</span>
-                        <span className="font-medium">
-                          {completeAnalysis.humedadAire.stats?.min?.toFixed(1)}% /{" "}
-                          {completeAnalysis.humedadAire.stats?.max?.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Tendencia:</span>
-                        <div className="flex items-center gap-1">
-                          {getTrendIcon(completeAnalysis.humedadAire.trend?.direction)}
-                          <span className="font-medium">{completeAnalysis.humedadAire.trend?.direction}</span>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="w-full justify-center mt-2">
-                        {completeAnalysis.humedadAire.health?.status}
-                      </Badge>
-                    </div>
-                  )}
-                </Card>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="anomalies" className="space-y-4">
-            {anomalies && (
-              <Card className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <AlertTriangle className="w-6 h-6 text-orange-600" />
+        {/* Hero Card */}
+        {currentMaceta && (
+          <Card className="mb-10 overflow-hidden shadow-2xl">
+            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-10 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-8">
+                  <div className="text-9xl">{currentMaceta.emoji}</div>
                   <div>
-                    <h3 className="font-semibold text-lg">Anomalías Detectadas</h3>
-                    <p className="text-sm text-muted-foreground">Total encontradas: {anomalies.anomaliesFound || 0}</p>
+                    <h2 className="text-6xl font-black">{currentMaceta.name}</h2>
+                    <p className="text-3xl opacity-90">Maceta {currentMaceta.macetaId}</p>
+                    {currentMaceta.mood && <p className="text-2xl mt-3 opacity-80">Ánimo: {currentMaceta.mood}</p>}
                   </div>
                 </div>
+                {currentMaceta.needsWater && (
+                  <Badge className="text-3xl px-10 py-5 bg-red-600 animate-pulse">
+                    <Droplets className="w-10 h-10 mr-3" />
+                    Necesita Riego
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </Card>
+        )}
 
-                {anomalies.anomaliesFound === 0 ? (
-                  <div className="text-center py-8">
-                    <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto mb-2" />
-                    <p className="text-muted-foreground">No se detectaron anomalías en el período analizado</p>
+        {/* Salud General + Stats Actuales */}
+        <div className="grid lg:grid-cols-3 gap-8 mb-10">
+          {/* Salud General */}
+          {health && (
+            <Card className="lg:col-span-2 p-10 bg-white/95 backdrop-blur shadow-2xl">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-6">
+                  <div className="p-6 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 shadow-2xl">
+                    <Target className="w-20 h-20 text-white" />
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {anomalies.anomalies &&
-                      anomalies.anomalies.map((anomaly: Anomaly, idx: number) => (
-                        <div key={idx} className="p-4 bg-orange-100 dark:bg-orange-950 rounded-lg">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <p className="font-medium">Valor anómalo detectado</p>
-                              <p className="text-sm text-muted-foreground mt-1">{anomaly.timestamp}</p>
-                            </div>
-                            <Badge variant="destructive">{anomaly.value}</Badge>
-                          </div>
-                          {anomaly.expectedRange && (
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Rango esperado: {anomaly.expectedRange.min.toFixed(1)} -{" "}
-                              {anomaly.expectedRange.max.toFixed(1)}
-                            </p>
-                          )}
-                        </div>
-                      ))}
+                  <div>
+                    <h3 className="text-4xl font-black">Salud General</h3>
+                    <p className="text-xl text-gray-600">Últimas {health.period.hours}h • {health.period.dataPoints} registros</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-9xl font-black text-gray-800">{health.overallScore}</div>
+                  <Badge className={cn("text-3xl px-10 py-4 mt-4", getStatusColor(health.status))}>
+                    {health.status}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+                {Object.entries(health.components).map(([key, val]: any) => (
+                  <div key={key} className="bg-gradient-to-br from-gray-50 to-gray-100 p-8 rounded-3xl shadow-xl">
+                    <div className="flex items-center justify-between mb-4">
+                      {key === "temperatura" && <Thermometer className="w-12 h-12 text-orange-500" />}
+                      {key === "humedadSuelo" && <Droplets className="w-12 h-12 text-blue-600" />}
+                      {key === "humedadAire" && <CloudRain className="w-12 h-12 text-cyan-500" />}
+                      <span className="text-5xl font-bold">{val.score}</span>
+                    </div>
+                    <p className="text-xl font-semibold capitalize">
+                      {key === "humedadSuelo" ? "Humedad Suelo" : key === "humedadAire" ? "Humedad Aire" : "Temperatura"}
+                    </p>
+                    <Progress value={val.score} className="h-4 mt-3" />
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Stats Actuales */}
+          {currentStats && (
+            <Card className="p-10 bg-white/95 backdrop-blur shadow-2xl">
+              <h3 className="text-3xl font-black mb-8 flex items-center gap-4">
+                <Activity className="w-10 h-10 text-emerald-600" />
+                Estado Actual
+              </h3>
+              <div className="space-y-6">
+                <div className="flex justify-between items-center text-2xl">
+                  <span className="flex items-center gap-3"><Thermometer className="w-8 h-8 text-orange-500" /> Temperatura</span>
+                  <span className="font-bold">{currentStats.temperatura}°C</span>
+                </div>
+                <div className="flex justify-between items-center text-2xl">
+                  <span className="flex items-center gap-3"><Droplets className="w-8 h-8 text-blue-600" /> Hum. Suelo</span>
+                  <span className="font-bold">{currentStats.humedadSuelo}%</span>
+                </div>
+                <div className="flex justify-between items-center text-2xl">
+                  <span className="flex items-center gap-3"><CloudRain className="w-8 h-8 text-cyan-500" /> Hum. Aire</span>
+                  <span className="font-bold">{currentStats.humedadAire}%</span>
+                </div>
+                <div className="flex justify-between items-center text-2xl">
+                  <span className="flex items-center gap-3"><Sun className="w-8 h-8 text-yellow-500" /> Luz</span>
+                  <span className="font-bold">{currentStats.luz ? "Sí" : "No"}</span>
+                </div>
+                {currentStats.presionAtmosferica && (
+                  <div className="flex justify-between items-center text-2xl">
+                    <span className="flex items-center gap-3"><Wind className="w-8 h-8 text-gray-500" /> Presión</span>
+                    <span className="font-bold">{currentStats.presionAtmosferica} hPa</span>
                   </div>
                 )}
-              </Card>
-            )}
+              </div>
+            </Card>
+          )}
+        </div>
+
+        {/* Predicción de Riego */}
+        {prediction?.prediction && (
+          <Card className={cn("p-12 mb-10 text-white shadow-3xl", prediction.prediction.needed ? "bg-gradient-to-br from-red-500 to-pink-600" : "bg-gradient-to-br from-emerald-500 to-teal-600")}>
+            <div className="text-center">
+              <Droplets className="w-32 h-32 mx-auto mb-6 opacity-90" />
+              <h2 className="text-6xl font-black mb-6">
+                {prediction.prediction.needed ? "¡Necesita Riego YA!" : "Está Perfectamente Hidratada"}
+              </h2>
+              <div className="flex justify-center gap-12 text-3xl">
+                <div>
+                  <p className="text-white/80">Confianza</p>
+                  <p className="text-7xl font-black">{prediction.prediction.confidence}%</p>
+                </div>
+                {prediction.prediction.recommendation && (
+                  <div>
+                    <p className="text-white/80">Riego sugerido</p>
+                    <p className="text-8xl font-black">{prediction.prediction.recommendation.duration}s</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Tabs */}
+        <Tabs defaultValue="anomalies" className="mt-16">
+          <TabsList className="grid w-full grid-cols-4 h-20 text-xl font-bold bg-white/90 backdrop-blur-xl shadow-2xl">
+            <TabsTrigger value="anomalies">Anomalías</TabsTrigger>
+            <TabsTrigger value="patterns">Patrones</TabsTrigger>
+            <TabsTrigger value="recommendations">Recomendaciones</TabsTrigger>
+            <TabsTrigger value="insights">Insights</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="anomalies" className="mt-8">
+            <Card className="p-16 text-center bg-white/95 backdrop-blur shadow-2xl">
+              {anomalies?.anomaliesFound === 0 ? (
+                <div className="py-20">
+                  <CheckCircle2 className="w-32 h-32 text-emerald-600 mx-auto mb-8" />
+                  <p className="text-5xl font-black text-gray-800">¡Ninguna anomalía!</p>
+                  <p className="text-2xl text-gray-600 mt-4">{currentMaceta?.name} está en perfecto estado</p>
+                </div>
+              ) : (
+                <div>
+                  <AlertTriangle className="w-32 h-32 text-orange-600 mx-auto mb-8" />
+                  <p className="text-6xl font-black text-orange-600">{anomalies?.anomaliesFound} anomalías detectadas</p>
+                </div>
+              )}
+            </Card>
           </TabsContent>
 
-          <TabsContent value="patterns" className="space-y-4">
-            {dailyPatterns && (
-              <Card className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <BarChart3 className="w-6 h-6 text-primary" />
-                  <div>
-                    <h3 className="font-semibold text-lg">Patrones Diarios</h3>
-                    <p className="text-sm text-muted-foreground">Análisis de comportamiento por hora</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {dailyPatterns.hourlyAverages && (
-                    <div>
-                      <h4 className="font-medium mb-3">Promedios por Hora</h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {Object.entries(dailyPatterns.hourlyAverages).map(([hour, data]: [string, any]) => (
-                          <Card key={hour} className="p-3 bg-accent/50">
-                            <div className="text-sm font-medium mb-1">{hour}:00h</div>
-                            <div className="text-xs space-y-1 text-muted-foreground">
-                              <div>T: {data.temperatura?.toFixed(1)}°C</div>
-                              <div>HS: {data.humedadSuelo?.toFixed(1)}%</div>
-                              <div>HA: {data.humedadAire?.toFixed(1)}%</div>
-                            </div>
-                          </Card>
-                        ))}
+          <TabsContent value="recommendations" className="mt-8">
+            <Card className="p-10 bg-white/95 backdrop-blur shadow-2xl">
+              <h3 className="text-4xl font-black mb-8 text-center">Recomendaciones para {currentMaceta?.name}</h3>
+              <div className="space-y-6">
+                {health?.recommendations?.length ? (
+                  health.recommendations.slice(0, 5).map((r: any, i: number) => (
+                    <div key={i} className="bg-gradient-to-r from-gray-50 to-gray-100 p-8 rounded-3xl shadow-xl flex items-center gap-6">
+                      <div className={cn("p-6 rounded-full", r.priority === "CRITICAL" ? "bg-red-500" : r.priority === "HIGH" ? "bg-orange-500" : "bg-yellow-500")}>
+                        <AlertCircle className="w-12 h-12 text-white" />
                       </div>
+                      <div className="flex-1">
+                        <p className="text-2xl font-bold">{r.action}</p>
+                        <p className="text-lg text-gray-600 mt-2">{r.reason}</p>
+                      </div>
+                      <Badge className={cn("text-xl px-6 py-3", r.priority === "CRITICAL" ? "bg-red-600" : "bg-orange-500")}>
+                        {r.priority}
+                      </Badge>
                     </div>
-                  )}
+                  ))
+                ) : (
+                  <p className="text-center text-3xl text-gray-600 py-20">¡Todo perfecto! No hay recomendaciones</p>
+                )}
+              </div>
+            </Card>
+          </TabsContent>
 
-                  {dailyPatterns.peakHours && (
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <Card className="p-4 bg-chart-1/10">
-                        <h4 className="font-medium mb-2 flex items-center gap-2">
-                          <TrendingUp className="w-4 h-4 text-chart-1" />
-                          Hora Más Caliente
-                        </h4>
-                        <div className="text-2xl font-bold">{dailyPatterns.peakHours.hottest}:00h</div>
-                      </Card>
-                      <Card className="p-4 bg-chart-2/10">
-                        <h4 className="font-medium mb-2 flex items-center gap-2">
-                          <TrendingDown className="w-4 h-4 text-chart-2" />
-                          Hora Más Fresca
-                        </h4>
-                        <div className="text-2xl font-bold">{dailyPatterns.peakHours.coolest}:00h</div>
-                      </Card>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
+          <TabsContent value="insights" className="mt-8">
+            <Card className="p-20 bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-center shadow-3xl">
+              <Sparkles className="w-40 h-40 mx-auto mb-10 opacity-80" />
+              <h3 className="text-7xl font-black mb-6">
+                {currentMaceta?.name} está {health?.status.toLowerCase()}
+              </h3>
+              <p className="text-4xl leading-relaxed max-w-4xl mx-auto">
+                {currentMaceta?.name} te agradece tus cuidados. ¡Sigue así!
+              </p>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
     </div>
-  )
+  );
 }
