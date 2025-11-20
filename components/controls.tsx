@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils"
+import { useState, useEffect } from "react"
 import {
   ArrowUp,
   ArrowDown,
@@ -12,14 +12,16 @@ import {
   Bell,
   Info,
   Zap,
-} from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
-import WateringAnimation from "@/components/watering-animation";
-import { API_CONFIG, getApiUrl, apiRequest } from "@/lib/config";
+  Activity,
+  CircleDot,
+} from "lucide-react"
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
+import { Slider } from "@/components/ui/slider"
+import WateringAnimation from "@/components/watering-animation"
+import { API_CONFIG, getApiUrl, apiRequest } from "@/lib/config"
 
 export default function Controls() {
   const [autoMode, setAutoMode] = useState(false);
@@ -50,187 +52,120 @@ export default function Controls() {
 
   // === Servo brazo inferior (180°) ===
   const handleLowerMove = async (delta: number) => {
-    const newAngle = Math.max(0, Math.min(180, lowerAngle + delta));
-    setLowerAngle(newAngle);
+    const newAngle = Math.max(0, Math.min(180, lowerAngle + delta))
+    setLowerAngle(newAngle)
     await apiRequest(API_CONFIG.endpoints.servo.lowerArm, {
       method: "POST",
       body: JSON.stringify({ angle: newAngle }),
-    });
-  };
+    })
+  }
 
-  // === Servo brazo superior (180°) ===
   const handleUpperMove = async (delta: number) => {
-    const newAngle = Math.max(0, Math.min(180, upperAngle + delta));
-    setUpperAngle(newAngle);
+    const newAngle = Math.max(0, Math.min(180, upperAngle + delta))
+    setUpperAngle(newAngle)
     await apiRequest(API_CONFIG.endpoints.servo.upperArm, {
       method: "POST",
       body: JSON.stringify({ angle: newAngle }),
-    });
-  };
+    })
+  }
 
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const response = await fetch(
-          getApiUrl(API_CONFIG.endpoints.irrigationStatus)
-        );
+        const response = await fetch(getApiUrl(API_CONFIG.endpoints.irrigationStatus))
 
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(`HTTP error! status: ${response.status}`)
         }
 
-        const data = await response.json();
-        setIrrigationStatus(data.data);
-        setAutoMode(data.data?.autoMode || false);
+        const data = await response.json()
+        setIrrigationStatus(data.data)
+        setAutoMode(data.data?.autoMode || false)
       } catch (error) {
-        console.error("Error fetching irrigation status:", error);
+        console.error("Error fetching irrigation status:", error)
       }
-    };
+    }
 
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    fetchStatus()
+    const interval = setInterval(fetchStatus, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleWater = async () => {
-    setIsWatering(true);
+    setIsWatering(true)
 
     try {
-      const response = await fetch(
-        getApiUrl(API_CONFIG.endpoints.irrigationManual),
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ duration: duration[0] }),
-        }
-      );
+      const response = await fetch(getApiUrl(API_CONFIG.endpoints.irrigationManual), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ duration: duration[0] }),
+      })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      const data = await response.json();
-      console.log("Irrigation started:", data);
+      const data = await response.json()
+      console.log("Irrigation started:", data)
     } catch (error) {
-      console.error("Error starting irrigation:", error);
+      console.error("Error starting irrigation:", error)
     }
 
-    setTimeout(() => setIsWatering(false), duration[0] * 1000);
-  };
+    setTimeout(() => setIsWatering(false), duration[0] * 1000)
+  }
 
   const handleAutoModeToggle = async (checked: boolean) => {
-    setAutoMode(checked);
+    setAutoMode(checked)
 
     try {
-      const response = await fetch(
-        getApiUrl(API_CONFIG.endpoints.irrigationAuto),
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ enabled: checked }),
-        }
-      );
+      const response = await fetch(getApiUrl(API_CONFIG.endpoints.irrigationAuto), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: checked }),
+      })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      const data = await response.json();
-      console.log("Auto mode toggled:", data);
+      const data = await response.json()
+      console.log("Auto mode toggled:", data)
     } catch (error) {
-      console.error("Error toggling auto mode:", error);
-      // Revertir el cambio si hay error
-      setAutoMode(!checked);
+      console.error("Error toggling auto mode:", error)
+      setAutoMode(!checked)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 relative">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-2 text-balance">
-            Panel de Control
-          </h1>
-          <p className="text-muted-foreground">
-            Gestiona tu sistema de riego inteligente
-          </p>
+          <div className="inline-flex items-center gap-2 mb-3">
+            <Activity className="w-8 h-8 text-primary" />
+            <h1 className="text-4xl md:text-5xl font-bold text-balance">Control del Sistema</h1>
+          </div>
+          <p className="text-lg text-muted-foreground">Gestiona tu brazo robótico y sistema de riego inteligente</p>
         </div>
 
-        {/* Watering Animation */}
-        {isWatering && (
-          <Card className="p-8 bg-gradient-to-b from-secondary/20 to-card">
-            <WateringAnimation />
-          </Card>
-        )}
-
-        {/* Irrigation Controls */}
-        <Card className="p-6 bg-gradient-to-br from-card to-accent/30">
-          <h2 className="text-xl font-semibold mb-4 text-balance">
-            Sistema de Riego
-          </h2>
-
-          <div className="space-y-4">
-            {/* Manual Watering */}
-            <div className="space-y-3">
-              <label className="text-sm font-medium">Duración del Riego</label>
-              <Slider
-                value={duration}
-                onValueChange={setDuration}
-                min={5}
-                max={60}
-                step={5}
-                className="w-full"
-              />
-              <p className="text-xs text-muted-foreground">
-                {duration[0]} segundos
-              </p>
-
-              <Button
-                className={cn(
-                  "w-full h-14 bg-gradient-to-r from-chart-2 to-chart-3 hover:opacity-90 transition-all",
-                  isWatering && "animate-pulse"
-                )}
-                onClick={handleWater}
-                disabled={isWatering}
-              >
-                <Droplets className="w-5 h-5 mr-2" />
-                {isWatering ? "Regando..." : "Regar Ahora"}
-              </Button>
-            </div>
-
-            {/* Auto Mode Toggle */}
-            <div className="flex items-center justify-between p-4 bg-accent/50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Zap className={cn("w-5 h-5", autoMode && "text-primary")} />
+        <div className="grid lg:grid-cols-2 gap-12">
+          <div className="space-y-6">
+            {/* Robotic Arm Control */}
+            <Card className="p-6 bg-gradient-to-br from-blue-50/50 via-white to-purple-50/30 dark:from-blue-950/20 dark:via-card dark:to-purple-950/20 border-2">
+              <div className="flex items-center justify-between mb-6">
                 <div>
-                  <p className="font-medium">Modo Automático</p>
-                  <p className="text-xs text-muted-foreground">
-                    Riego basado en sensores
-                  </p>
+                  <h2 className="text-2xl font-bold flex items-center gap-2">
+                    <CircleDot className="w-6 h-6 text-blue-600" />
+                    Brazo Robótico
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">Control de movimiento en tiempo real</p>
                 </div>
+                <Badge
+                  variant={isMoving ? "default" : "secondary"}
+                  className={cn("text-sm px-3 py-1", isMoving && "animate-pulse bg-green-500")}
+                >
+                  {isMoving ? "Activo" : "En reposo"}
+                </Badge>
               </div>
-              <Switch
-                checked={autoMode}
-                onCheckedChange={handleAutoModeToggle}
-              />
-            </div>
-          </div>
-        </Card>
-
-        {/* Robotic Arm Control */}
-        <Card className="p-6 bg-gradient-to-br from-card to-accent/30">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">
-              Control del Brazo Robótico
-            </h2>
-            <Badge
-              variant={isMoving ? "default" : "secondary"}
-              className="text-xs"
-            >
-              {isMoving ? "En movimiento" : "Listo"}
-            </Badge>
-          </div>
 
           <p className="text-sm text-muted-foreground mb-6">
             Controla el brazo robótico en tiempo real. Usa los botones o los
@@ -326,71 +261,149 @@ export default function Controls() {
             </Badge>
           </div>
 
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-            {[1, 2, 3, 4, 5, 6].map((pot) => (
-              <Button
-                key={pot}
-                variant={selectedPot === pot ? "default" : "outline"}
-                disabled
-                className={cn(
-                  "h-20 w-full opacity-50",
-                  selectedPot === pot && "pulse-glow-animation"
-                )}
-                onClick={() => setSelectedPot(pot)}
-              >
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{pot}</div>
-                  <div className="text-xs">Maceta</div>
+                <div className="bg-gradient-to-r from-purple-50 to-purple-100/50 dark:from-purple-950/40 dark:to-purple-900/20 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-semibold">Brazo Superior</label>
+                    <div className="text-2xl font-bold text-purple-600">{upperAngle}°</div>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={180}
+                    value={upperAngle}
+                    onChange={(e) => {
+                      const angle = Number(e.target.value)
+                      setUpperAngle(angle)
+                      handleUpperMove(angle - upperAngle)
+                    }}
+                    className="w-full h-3 rounded-lg appearance-none cursor-pointer bg-purple-200 dark:bg-purple-900/50 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-600 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:hover:bg-purple-700 [&::-webkit-slider-thumb]:transition-all"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                    <span>0°</span>
+                    <span>180°</span>
+                  </div>
                 </div>
-              </Button>
-            ))}
-          </div>
-        </Card>
-
-        {/* Settings */}
-        <Card className="p-6 bg-gradient-to-br from-card to-accent/30">
-          <h2 className="text-xl font-semibold mb-4 text-balance">
-            Configuración
-          </h2>
-
-          <div className="space-y-2">
-            <Button variant="ghost" className="w-full justify-start" disabled>
-              <SettingsIcon className="w-5 h-5 mr-3" />
-              Horarios programados
-            </Button>
-            <Button variant="ghost" className="w-full justify-start" disabled>
-              <SettingsIcon className="w-5 h-5 mr-3" />
-              Umbrales de sensores
-            </Button>
-            <div className="flex items-center justify-between p-3 hover:bg-accent rounded-lg">
-              <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5" />
-                <span>Notificaciones</span>
               </div>
-              <Switch defaultChecked />
-            </div>
-            <Button variant="ghost" className="w-full justify-start">
-              <Info className="w-5 h-5 mr-3" />
-              Acerca de
-            </Button>
-          </div>
-        </Card>
+            </Card>
 
-        {/* Status Info */}
-        {irrigationStatus && (
-          <Card className="p-4 bg-accent/50">
-            <p className="text-sm text-center text-muted-foreground">
-              Estado: {irrigationStatus.isActive ? "Regando..." : "Inactivo"} |
-              Último riego:{" "}
-              {irrigationStatus.lastIrrigation
-                ? new Date(irrigationStatus.lastIrrigation).toLocaleString(
-                    "es-ES"
-                  )
-                : "N/A"}
-            </p>
-          </Card>
-        )}
+            
+          </div>
+
+          <div className="space-y-6">
+            {isWatering && (
+              <Card className="p-8 bg-gradient-to-br from-blue-500/10 via-cyan-500/10 to-blue-500/10 border-2 border-blue-500/20 shadow-lg">
+                <WateringAnimation />
+              </Card>
+            )}
+
+            <Card className="p-6 bg-gradient-to-br from-green-50/50 via-white to-emerald-50/30 dark:from-green-950/20 dark:via-card dark:to-emerald-950/20 border-2">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 rounded-xl bg-green-500/10">
+                  <Droplets className="w-7 h-7 text-green-600" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Sistema de Riego</h2>
+                  <p className="text-sm text-muted-foreground">Control manual y automático</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 p-5 rounded-xl border border-yellow-200/50 dark:border-yellow-800/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn("p-2 rounded-lg transition-colors", autoMode ? "bg-yellow-500/20" : "bg-muted")}
+                      >
+                        <Zap
+                          className={cn(
+                            "w-5 h-5 transition-colors",
+                            autoMode ? "text-yellow-600" : "text-muted-foreground",
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <p className="font-semibold">Modo Automático</p>
+                        <p className="text-xs text-muted-foreground">Riego inteligente por sensores</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={autoMode}
+                      onCheckedChange={handleAutoModeToggle}
+                      className="data-[state=checked]:bg-yellow-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-accent/30 rounded-xl p-5">
+                    <label className="text-sm font-semibold mb-3 block">Duración del Riego Manual</label>
+                    <Slider
+                      value={duration}
+                      onValueChange={setDuration}
+                      min={5}
+                      max={60}
+                      step={5}
+                      className="w-full mb-3"
+                    />
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-muted-foreground">5 seg</p>
+                      <div className="text-2xl font-bold text-primary">{duration[0]}s</div>
+                      <p className="text-xs text-muted-foreground">60 seg</p>
+                    </div>
+                  </div>
+
+                  <Button
+                    className={cn(
+                      "w-full h-16 text-lg font-semibold",
+                      "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600",
+                      "shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]",
+                      isWatering && "animate-pulse",
+                    )}
+                    onClick={handleWater}
+                    disabled={isWatering}
+                  >
+                    <Droplets className="w-6 h-6 mr-2" />
+                    {isWatering ? "Regando..." : "Iniciar Riego"}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+
+            {irrigationStatus && (
+              <Card className="p-5 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/50 dark:to-gray-950/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={cn(
+                        "w-3 h-3 rounded-full",
+                        irrigationStatus.isActive ? "bg-green-500 animate-pulse" : "bg-gray-400",
+                      )}
+                    />
+                    <div>
+                      <p className="text-sm font-medium">
+                        {irrigationStatus.isActive ? "Sistema Activo" : "Sistema Inactivo"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Último riego:{" "}
+                        {irrigationStatus.lastIrrigation
+                          ? new Date(irrigationStatus.lastIrrigation).toLocaleString("es-ES", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              day: "2-digit",
+                              month: "short",
+                            })
+                          : "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            
+          </div>
+        </div>
       </div>
     </div>
-  );
+  )
 }

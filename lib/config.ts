@@ -100,10 +100,65 @@ export const API_CONFIG = {
     // Response: { success: true, timestamp, current, trends, stats24h, irrigation, alerts, healthScore }
     analysisSummary: "/api/analysis/summary",
 
+    // === MACETAS ENDPOINTS ===
+    // GET /api/macetas - Listar todas las macetas con overview
+    // Response: { success: true, data: MacetaProfile[], message: string }
+    macetas: "/api/macetas",
+
+    // GET /api/macetas/:id - Obtener perfil completo de una maceta específica
+    // Response: { success: true, data: MacetaProfile, message: string }
+    pot: "/api/macetas/:id",
+
+    // GET /api/macetas/:id/current - Datos actuales de sensores de una maceta
+    // Response: { success: true, data: SensorData }
+    potCurrent: "/api/macetas/:id/current",
+
+    // GET /api/macetas/:id/stats - Estadísticas de una maceta
+    // Response: { success: true, data: { current, history, analysis }, message: string }
+    macetaStats: "/api/macetas/:id/stats",
+
+    // GET /api/macetas/:id/history?hours=24 - Historial de una maceta
+    // Response: { success: true, data: SensorData[], meta: {...} }
+    potHistory: "/api/macetas/:id/history",
+
+    // GET /api/macetas/:id/analysis - Análisis de una maceta
+    // Response: { success: true, data: { health, recommendations, alerts }, message: string }
+    potAnalysis: "/api/macetas/:id/analysis",
+
+    // POST /api/macetas/:id/water - Registrar riego manual
+    // Body: { amount: number, duration: number }
+    // Response: { success: true, message: string }
+    potWater: "/api/macetas/:id/water",
+
+    // PUT /api/macetas/:id - Actualizar maceta
+    // Body: { name?: string, species?: string, personality?: string }
+    // Response: { success: true, data: Pot }
+    potUpdate: "/api/macetas/:id",
+
+    // === CHAT POR MACETA ENDPOINTS ===
+    // ✅ FIXED: Rutas correctas según chatMaceta.js del backend
+    // POST /api/chat/maceta/:id/message - Enviar mensaje a una planta específica
+    // Body: { message: string, forceRefresh?: boolean }
+    // Response: { success: true, macetaId: number, messageId: string, message: string, action: {...}, macetaInfo: {...} }
+    macetaChatMessage: "/api/chat/maceta/:id/message",
+
+    // GET /api/chat/maceta/:id/history?limit=50 - Historial de chat con una planta
+    // Response: { success: true, macetaId: number, count: number, messages: ChatMessage[] }
+    macetaChatHistory: "/api/chat/maceta/:id/history",
+
+    // GET /api/chat/maceta/:id/stats - Estadísticas de chat
+    // Response: { success: true, macetaId: number, stats: {...} }
+    macetaChatStats: "/api/chat/maceta/:id/stats",
+
+    // DELETE /api/chat/maceta/:id/clear - Limpiar historial de chat con una planta
+    // Response: { success: true, message: string, deletedCount: number }
+    macetaChatClear: "/api/chat/maceta/:id/clear",
+
     // === SYSTEM ENDPOINTS ===
     // GET /health
     // Response: { status, service, version, timestamp, components, dataCache }
     health: "/health",
+
     // === ROBOTIC ARM ENDPOINTS ===
     servo: {
       // Control individual de servos
@@ -125,16 +180,37 @@ export function getApiUrl(endpoint: string): string {
 }
 
 /**
- * Helper para hacer peticiones con manejo de errores
+ * Helper para construir URLs de endpoints de macetas individuales
+ * Reemplaza :id en la ruta con el ID de la maceta
  */
-export async function apiRequest<T>(
+export function getPotApiUrl(endpoint: string, potId: number): string {
+  const url = endpoint.replace(":id", potId.toString());
+  return url; // ✅ No agregamos baseUrl aquí, apiRequest lo hace
+}
+
+/**
+ * Alias de getPotApiUrl para compatibilidad
+ */
+export const getMacetaApiUrl = getPotApiUrl;
+
+/**
+ * Helper para hacer peticiones con manejo de errores
+ * ✅ FIXED: Ahora maneja correctamente endpoints relativos y absolutos
+ */
+export async function apiRequest<T = any>(
   endpoint: string,
   options?: RequestInit
-): Promise<{ success: boolean; data?: T; error?: string }> {
+): Promise<{ success: boolean; data?: T; error?: string; [key: string]: any }> {
   try {
-    console.log("➡️ API request to:", getApiUrl(endpoint), options); // 👈 agrega esto
+    // ✅ Si el endpoint ya tiene el baseUrl, usarlo directamente
+    // Si no, agregarlo
+    const url = endpoint.startsWith('http') 
+      ? endpoint 
+      : getApiUrl(endpoint);
 
-    const response = await fetch(getApiUrl(endpoint), {
+    console.log("➡️ API request to:", url, options?.method || 'GET');
+
+    const response = await fetch(url, {
       ...options,
       headers: {
         "Content-Type": "application/json",
@@ -142,21 +218,23 @@ export async function apiRequest<T>(
       },
     });
 
+    const json = await response.json();
+    
+    console.log("⬅️ API response:", json);
+
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(json.error || `HTTP error! status: ${response.status}`);
     }
 
-    const json = await response.json();
     return json;
   } catch (error) {
-    console.error(`API Request Error [${endpoint}]:`, error);
+    console.error(`❌ API Request Error [${endpoint}]:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Error desconocido",
     };
   }
 }
-
 
 /**
  * Tipos de datos comunes
@@ -167,10 +245,12 @@ export interface SensorData {
   temperatura: number;
   humedadSuelo: number;
   humedadAire: number;
+  presionAtmosferica?: number;
   luz: boolean;
   tiempoRiego: number;
   consumoAgua: number;
   consumoEnergia: number;
+  maceta?: number;
 }
 
 export interface ApiResponse<T = any> {
@@ -179,4 +259,92 @@ export interface ApiResponse<T = any> {
   error?: string;
   message?: string;
   timestamp?: string;
+}
+
+export interface Pot {
+  id: number;
+  name: string;
+  species: string;
+  personality: string;
+  plantedDate: string;
+  health: number;
+  mood: string;
+  avatar?: string;
+}
+
+export interface PotProfile extends Pot {
+  stats: {
+    totalWaterings: number;
+    averageHealth: number;
+    daysAlive: number;
+  };
+  preferences: {
+    optimalTemp: { min: number; max: number };
+    optimalHumidity: { min: number; max: number };
+    wateringFrequency: string;
+  };
+}
+
+export interface ChatMessage {
+  id: string;
+  macetaId?: number;
+  potId?: number;
+  userId?: string;
+  userMessage: string;
+  botResponse: string;
+  message?: string;
+  response?: string;
+  timestamp: string;
+  sentiment?: string;
+}
+
+// ✅ Nuevos tipos según respuestas del backend
+export interface MacetaProfile {
+  macetaId: number;
+  available: boolean;
+  name: string;
+  emoji: string;
+  healthScore?: number;
+  mood?: string;
+  needsWater?: boolean;
+  lastUpdate?: string;
+  current?: {
+    temperatura: number;
+    humedadSuelo: number;
+    humedadAire: number;
+    presionAtmosferica: number;
+    luz: boolean;
+    timestamp: string;
+  };
+  stats24h?: {
+    temperatura: { actual: number; promedio: number; min: number; max: number };
+    humedadSuelo: { actual: number; promedio: number; min: number; max: number };
+    humedadAire: { actual: number; promedio: number; min: number; max: number };
+    presionAtmosferica?: { actual: number; promedio: number; min: number; max: number };
+    luz?: { tieneAhora: boolean; porcentajeConLuz: string };
+    riego: { totalRiegos: number; ultimoRiego: string; tiempoTotal?: number; consumoAgua?: string; consumoEnergia?: string };
+    periodo?: { hours: number; desde: string; hasta: string };
+  };
+  health?: {
+    score: number;
+    status: string;
+    mood: string;
+    components?: {
+      temperatura: any;
+      humedadSuelo: any;
+      humedadAire: any;
+    };
+  };
+  trends?: {
+    temperatura: any;
+    humedadSuelo: any;
+    humedadAire: any;
+  };
+  irrigation?: {
+    needed: boolean;
+    confidence: number;
+    recommendation: string;
+  };
+  recommendations?: any[];
+  recentHistory?: any[];
 }

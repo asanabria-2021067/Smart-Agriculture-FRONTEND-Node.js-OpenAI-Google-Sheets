@@ -1,369 +1,352 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import {
+  Brain,
+  Droplets,
+  Thermometer,
+  Flower2,
   AlertTriangle,
   TrendingUp,
   TrendingDown,
   Minus,
-  Droplets,
-  Thermometer,
-  Wind,
   RefreshCw,
-  Brain,
   Target,
+  Clock,
+  Activity,
+  Sparkles,
   AlertCircle,
   CheckCircle2,
-  Clock,
   BarChart3,
-} from "lucide-react"
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { cn } from "@/lib/utils"
-import { API_CONFIG, getApiUrl } from "@/lib/config"
+  Leaf,
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { API_CONFIG, getApiUrl } from "@/lib/config";
+
+interface Maceta {
+  macetaId: number;
+  name: string;
+  emoji: string;
+  healthScore?: number;
+  mood?: string;
+  needsWater?: boolean;
+  lastUpdate?: string;
+}
 
 interface HealthScore {
-  overallScore: number
-  status: string
+  overallScore: number;
+  status: string;
   components: {
-    temperatura: { score: number; status: string }
-    humedad: { score: number; status: string }
-  }
+    temperatura: { score: number; status: string };
+    humedadSuelo: { score: number; status: string };
+    humedadAire?: { score: number; status: string };
+  };
   recommendations: Array<{
-    priority: string
-    action: string
-    reason: string
-  }>
+    priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+    action: string;
+    reason: string;
+  }>;
 }
 
-interface IrrigationPrediction {
-  needed: boolean
-  confidence: number
-  recommendation?: {
-    duration: number
-    timing: string
-  }
-  reasoning: string[]
-}
-
-interface Anomaly {
-  timestamp: string
-  value: number
-  expectedRange: { min: number; max: number }
-  deviation?: number
-}
-
-interface CompleteAnalysis {
-  temperatura: any
-  humedadSuelo: any
-  humedadAire: any
+interface Prediction {
+  needed: boolean;
+  confidence: number;
+  recommendation?: { duration: number; timing: string };
+  reasons: string[];
 }
 
 export default function Analysis() {
-  const [loading, setLoading] = useState(true)
-  const [healthScore, setHealthScore] = useState<HealthScore | null>(null)
-  const [prediction, setPrediction] = useState<IrrigationPrediction | null>(null)
-  const [anomalies, setAnomalies] = useState<any>(null)
-  const [completeAnalysis, setCompleteAnalysis] = useState<CompleteAnalysis | null>(null)
-  const [dailyPatterns, setDailyPatterns] = useState<any>(null)
-  const [lastUpdate, setLastUpdate] = useState<string | null>(null)
+  const [macetas, setMacetas] = useState<Maceta[]>([]);
+  const [selectedMaceta, setSelectedMaceta] = useState<string>("all");
+  const [health, setHealth] = useState<HealthScore | null>(null);
+  const [prediction, setPrediction] = useState<Prediction | null>(null);
+  const [anomalies, setAnomalies] = useState<any>(null);
+  const [patterns, setPatterns] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchAllAnalysis = async () => {
+  // Cargar lista de macetas
+  useEffect(() => {
+    fetch(getApiUrl(API_CONFIG.endpoints.macetas))
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && res.data) {
+          setMacetas(res.data);
+          if (res.data.length > 0) {
+            setSelectedMaceta(res.data[0].macetaId.toString());
+          }
+        }
+      });
+  }, []);
+
+  const fetchAnalysisForMaceta = async (macetaId: string) => {
     try {
-      setLoading(true)
-      const [health, pred, anom, complete, patterns] = await Promise.all([
-        fetch(getApiUrl(`${API_CONFIG.endpoints.analysisHealthScore}?hours=24`)).then((r) => r.json()),
-        fetch(getApiUrl(`${API_CONFIG.endpoints.analysisIrrigationPrediction}?hours=6`)).then((r) => r.json()),
-        fetch(getApiUrl(`${API_CONFIG.endpoints.analysisAnomalies}?hours=24&field=humedadSuelo`)).then((r) => r.json()),
-        fetch(getApiUrl(`${API_CONFIG.endpoints.analysisComplete}?hours=24`)).then((r) => r.json()),
-        fetch(getApiUrl(`${API_CONFIG.endpoints.analysisDailyPatterns}?hours=48`)).then((r) => r.json()),
-      ])
+      setLoading(true);
+      setError(null);
 
-      setHealthScore(health)
-      setPrediction(pred.prediction)
-      setAnomalies(anom)
-      setCompleteAnalysis(complete.analysis)
-      setDailyPatterns(patterns.patterns)
-    } catch (error) {
-      console.error("Error fetching analysis:", error)
+      const base = macetaId === "all"
+        ? API_CONFIG.endpoints
+        : {
+            analysisHealthScore: `/api/macetas/${macetaId}/analysis/health-score`,
+            analysisIrrigationPrediction: `/api/macetas/${macetaId}/analysis/irrigation-prediction`,
+            analysisAnomalies: `/api/macetas/${macetaId}/analysis/anomalies`,
+            analysisDailyPatterns: `/api/macetas/${macetaId}/analysis/daily-patterns`,
+          };
+
+      const endpoints = macetaId === "all" ? API_CONFIG.endpoints : base;
+
+      const [healthRes, predRes, anomaliesRes, patternsRes] = await Promise.all([
+        fetch(getApiUrl(endpoints.analysisHealthScore) + "?hours=24"),
+        fetch(getApiUrl(endpoints.analysisIrrigationPrediction) + "?hours=6"),
+        fetch(getApiUrl(endpoints.analysisAnomalies) + "?hours=24&field=humedadSuelo"),
+        fetch(getApiUrl(endpoints.analysisDailyPatterns) + "?hours=48"),
+      ]);
+
+      if (healthRes.ok) {
+        const json = await healthRes.json();
+        if (json.success) setHealth(json);
+      }
+
+      if (predRes.ok) {
+        const json = await predRes.json();
+        if (json.success) setPrediction(json.prediction || json);
+      }
+
+      if (anomaliesRes.ok) {
+        const json = await anomaliesRes.json();
+        if (json.success) setAnomalies(json);
+      }
+
+      if (patternsRes.ok) {
+        const json = await patternsRes.json();
+        if (json.success) setPatterns(json.patterns || json);
+      }
+    } catch (err) {
+      setError("Error al cargar análisis de esta maceta");
+      console.error(err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchAllAnalysis()
-    const interval = setInterval(fetchAllAnalysis, 30000)
-    return () => clearInterval(interval)
-  }, [])
-
-  // ✅ Evita hydration errors: genera la fecha solo en el cliente
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const now = new Date().toLocaleString("es-ES", {
-        hour12: false,
-        timeZone: "America/Guatemala",
-      })
-      setLastUpdate(now)
+    if (selectedMaceta) {
+      fetchAnalysisForMaceta(selectedMaceta);
     }
-  }, [])
+  }, [selectedMaceta]);
 
-  const getTrendIcon = (direction: string) => {
-    switch (direction) {
-      case "CRECIENTE":
-        return <TrendingUp className="w-4 h-4 text-chart-1" />
-      case "DECRECIENTE":
-        return <TrendingDown className="w-4 h-4 text-chart-2" />
-      default:
-        return <Minus className="w-4 h-4 text-muted-foreground" />
-    }
-  }
+  const currentMaceta = macetas.find(m => m.macetaId.toString() === selectedMaceta);
 
   const getStatusColor = (status: string) => {
-    const statusMap: Record<string, string> = {
-      EXCELENTE: "text-green-600 bg-green-100 dark:bg-green-950",
-      BUENO: "text-blue-600 bg-blue-100 dark:bg-blue-950",
-      REGULAR: "text-yellow-600 bg-yellow-100 dark:bg-yellow-950",
-      MALO: "text-orange-600 bg-orange-100 dark:bg-orange-950",
-      CRÍTICO: "text-red-600 bg-red-100 dark:bg-red-950",
-    }
-    return statusMap[status] || "text-muted-foreground bg-muted"
-  }
+    const map: Record<string, string> = {
+      EXCELENTE: "bg-emerald-500 text-white",
+      BUENO: "bg-blue-500 text-white",
+      REGULAR: "bg-yellow-500 text-white",
+      MALO: "bg-orange-500 text-white",
+      CRÍTICO: "bg-red-600 text-white",
+    };
+    return map[status] || "bg-gray-500 text-white";
+  };
 
-  const getPriorityColor = (priority: string) => {
-    const priorityMap: Record<string, string> = {
-      CRITICAL: "text-red-600 bg-red-100 dark:bg-red-950",
-      HIGH: "text-orange-600 bg-orange-100 dark:bg-orange-950",
-      MEDIUM: "text-yellow-600 bg-yellow-100 dark:bg-yellow-950",
-      LOW: "text-blue-600 bg-blue-100 dark:bg-blue-950",
-    }
-    return priorityMap[priority] || "text-muted-foreground bg-muted"
-  }
-
-  if (loading) {
+  if (loading && !health) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <RefreshCw className="w-12 h-12 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Analizando datos...</p>
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <Leaf className="w-20 h-20 text-emerald-600 animate-pulse mx-auto" />
+          <p className="text-2xl font-bold text-gray-700">Cargando análisis de {currentMaceta?.name || "tu planta"}...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 space-y-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2 text-balance">Análisis Avanzado</h1>
-            <p className="text-muted-foreground">Estadísticas detalladas y predicciones inteligentes</p>
-          </div>
-          <Button
-            onClick={fetchAllAnalysis}
-            variant="outline"
-            size="icon"
-            className="hover:scale-110 transition-transform bg-transparent"
-          >
-            <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
-          </Button>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 relative overflow-hidden">
+      {/* Fondo vivo */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-10 left-10 w-96 h-96 bg-emerald-300/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-80 h-80 bg-cyan-300/20 rounded-full blur-3xl animate-pulse delay-1000" />
+      </div>
 
-        {/* 🧠 Estado general */}
-        {healthScore && (
-          <Card className="p-6 bg-gradient-to-br from-card to-accent/20">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-primary/20">
-                  <Brain className="w-6 h-6 text-primary" />
+      <div className="relative z-10 px-4 py-8 md:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header con selector de maceta */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-10">
+            <div className="text-center md:text-left">
+              <h1 className="text-5xl md:text-6xl font-black text-gray-800 flex items-center gap-4 justify-center md:justify-start">
+                <Brain className="w-14 h-14 text-emerald-600" />
+                Análisis por Maceta
+              </h1>
+              <p className="text-xl text-gray-600 mt-3">Todo sobre tu planta favorita</p>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Select value={selectedMaceta} onValueChange={setSelectedMaceta}>
+                <SelectTrigger className="w-64 bg-white/90 backdrop-blur-xl shadow-xl text-lg">
+                  <SelectValue placeholder="Selecciona una maceta" />
+                </SelectTrigger>
+                <SelectContent>
+                  {macetas.map((maceta) => (
+                    <SelectItem key={maceta.macetaId} value={maceta.macetaId.toString()}>
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{maceta.emoji}</span>
+                        <div>
+                          <p className="font-semibold">{maceta.name}</p>
+                          <p className="text-xs text-muted-foreground">Maceta {maceta.macetaId}</p>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button
+                onClick={() => fetchAnalysisForMaceta(selectedMaceta)}
+                size="lg"
+                className="bg-white/90 backdrop-blur-xl shadow-2xl hover:scale-105"
+              >
+                <RefreshCw className={cn("w-6 h-6", loading && "animate-spin")} />
+              </Button>
+            </div>
+          </div>
+
+          {/* Maceta seleccionada - Hero Card */}
+          {currentMaceta && (
+            <Card className="p-8 mb-10 bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-3xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-6">
+                  <div className="text-9xl">{currentMaceta.emoji}</div>
+                  <div>
+                    <h2 className="text-5xl font-black">{currentMaceta.name}</h2>
+                    <p className="text-2xl opacity-90">Maceta {currentMaceta.macetaId}</p>
+                    {currentMaceta.mood && (
+                      <p className="text-xl mt-2 opacity-80">Ánimo: {currentMaceta.mood}</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-balance">Estado de Salud General</h2>
-                  <p className="text-sm text-muted-foreground">Score calculado de múltiples factores</p>
+                {currentMaceta.needsWater && (
+                  <Badge className="text-2xl px-8 py-4 bg-red-600">
+                    Necesita Agua
+                  </Badge>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Salud General */}
+          {health && (
+            <Card className="p-10 mb-10 bg-white/90 backdrop-blur-2xl shadow-3xl">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-6">
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-emerald-400 to-teal-600 shadow-2xl">
+                    <Target className="w-16 h-16 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-4xl font-black text-gray-800">Salud de {currentMaceta?.name}</h2>
+                    <p className="text-xl text-gray-600">Análisis completo de bienestar</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-8xl font-black text-gray-800">{health.overallScore}</div>
+                  <Badge className={cn("text-2xl px-8 py-3 mt-3", getStatusColor(health.status))}>
+                    {health.status}
+                  </Badge>
                 </div>
               </div>
-              <Badge className={cn("text-lg px-4 py-2", getStatusColor(healthScore.status))}>
-                {healthScore.status}
-              </Badge>
-            </div>
 
-            <div className="grid md:grid-cols-3 gap-4 mb-6">
-              <Card className="p-4 bg-gradient-to-br from-primary/10 to-card">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Score General</span>
-                  <Target className="w-4 h-4 text-primary" />
-                </div>
-                <div className="text-3xl font-bold text-balance">{healthScore.overallScore}/100</div>
-              </Card>
-
-              <Card className="p-4 bg-gradient-to-br from-chart-1/10 to-card">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Temperatura</span>
-                  <Thermometer className="w-4 h-4 text-chart-1" />
-                </div>
-                <div className="text-3xl font-bold text-balance">{healthScore.components.temperatura.score}/100</div>
-                <Badge variant="outline" className="mt-2 text-xs">
-                  {healthScore.components.temperatura.status}
-                </Badge>
-              </Card>
-
-              <Card className="p-4 bg-gradient-to-br from-chart-2/10 to-card">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Humedad</span>
-                  <Droplets className="w-4 h-4 text-chart-2" />
-                </div>
-                <div className="text-3xl font-bold text-balance">{healthScore.components.humedad.score}/100</div>
-                <Badge variant="outline" className="mt-2 text-xs">
-                  {healthScore.components.humedad.status}
-                </Badge>
-              </Card>
-            </div>
-
-            {healthScore.recommendations.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="font-semibold flex items-center gap-2 mb-3">
-                  <AlertCircle className="w-4 h-4" />
-                  Recomendaciones
-                </h3>
-                {healthScore.recommendations.map((rec, idx) => (
-                  <div key={idx} className="flex items-start gap-3 p-3 bg-accent/50 rounded-lg">
-                    <Badge className={cn("shrink-0 mt-0.5", getPriorityColor(rec.priority))}>{rec.priority}</Badge>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{rec.action}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{rec.reason}</p>
+              <div className="grid md:grid-cols-3 gap-6">
+                {Object.entries(health.components).map(([key, value]) => (
+                  <Card key={key} className="p-6 bg-gradient-to-br from-white to-gray-50 shadow-xl">
+                    <div className="flex items-center justify-between mb-4">
+                      {key === "temperatura" && <Thermometer className="w-10 h-10 text-orange-500" />}
+                      {key === "humedadSuelo" && <Droplets className="w-10 h-10 text-blue-500" />}
+                      {key.includes("humedadAire") && <Activity className="w-10 h-10 text-cyan-500" />}
+                      <span className="text-4xl font-black">{value.score}</span>
                     </div>
-                  </div>
+                    <p className="text-lg font-bold capitalize">
+                      {key === "humedadSuelo" ? "Humedad Suelo" : key === "humedadAire" ? "Humedad Aire" : "Temperatura"}
+                    </p>
+                    <Badge className={cn("mt-2", getStatusColor(value.status))}>{value.status}</Badge>
+                  </Card>
                 ))}
               </div>
-            )}
-          </Card>
-        )}
+            </Card>
+          )}
 
-        {/* 💧 Predicción de riego */}
-        {prediction && (
-          <Card className="p-6 bg-gradient-to-br from-card to-chart-2/10">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 rounded-xl bg-chart-2/20">
-                <Droplets className="w-6 h-6 text-chart-2" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-balance">Predicción de Riego</h2>
-                <p className="text-sm text-muted-foreground">Basado en análisis de los últimos datos</p>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <Card className="p-4 bg-card">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">¿Se necesita riego?</span>
-                  {prediction.needed ? (
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="text-2xl font-bold">{prediction.needed ? "Sí" : "No"}</div>
-                <Badge variant="outline" className="mt-2">
+          {/* Predicción de Riego */}
+          {prediction && (
+            <Card className="p-10 mb-10 bg-gradient-to-br from-blue-600 to-cyan-700 text-white shadow-3xl">
+              <div className="text-center">
+                <Droplets className="w-24 h-24 mx-auto mb-6 opacity-90" />
+                <h2 className="text-5xl font-black mb-4">
+                  {prediction.needed ? "¡Necesita Riego!" : "Está Bien Hidratada"}
+                </h2>
+                <Badge className="text-3xl px-10 py-4 bg-white/20">
                   Confianza: {prediction.confidence}%
                 </Badge>
-              </Card>
 
-              {prediction.recommendation && (
-                <Card className="p-4 bg-card">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Duración Recomendada</span>
-                    <Clock className="w-5 h-5 text-primary" />
+                {prediction.recommendation && (
+                  <div className="mt-8 bg-white/10 backdrop-blur rounded-3xl p-8 inline-block">
+                    <Clock className="w-16 h-16 mx-auto mb-4" />
+                    <p className="text-3xl font-bold">Riego Recomendado</p>
+                    <p className="text-7xl font-black mt-4">{prediction.recommendation.duration}s</p>
+                    <p className="text-2xl mt-4 opacity-90">{prediction.recommendation.timing}</p>
                   </div>
-                  <div className="text-2xl font-bold">{prediction.recommendation.duration}s</div>
-                  <Badge variant="outline" className="mt-2">
-                    {prediction.recommendation.timing}
-                  </Badge>
-                </Card>
-              )}
-            </div>
-
-            {prediction.reasoning && prediction.reasoning.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm">Razonamiento:</h3>
-                {prediction.reasoning.map((reason, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <span className="text-primary">•</span>
-                    <span>{reason}</span>
-                  </div>
-                ))}
+                )}
               </div>
-            )}
-          </Card>
-        )}
+            </Card>
+          )}
 
-        {/* 📊 Tabs */}
-        <Tabs defaultValue="complete" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="complete">Análisis Completo</TabsTrigger>
-            <TabsTrigger value="anomalies">Anomalías</TabsTrigger>
-            <TabsTrigger value="patterns">Patrones Diarios</TabsTrigger>
-          </TabsList>
+          {/* Tabs: Anomalías, Patrones, Insights */}
+          <Tabs defaultValue="anomalies" className="mt-10">
+            <TabsList className="grid w-full grid-cols-3 h-16 text-lg font-bold bg-white/80 backdrop-blur-xl shadow-2xl">
+              <TabsTrigger value="anomalies">Anomalías</TabsTrigger>
+              <TabsTrigger value="patterns">Patrones</TabsTrigger>
+              <TabsTrigger value="insights">Insights</TabsTrigger>
+            </TabsList>
 
-          {/* 📈 ANOMALÍAS */}
-          <TabsContent value="anomalies" className="space-y-4">
-            {anomalies?.anomalies && anomalies.anomalies.length > 0 ? (
-              anomalies.anomalies.map((a: Anomaly, idx: number) => (
-                <Card key={idx} className="p-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <AlertTriangle className="w-5 h-5 text-destructive" />
-                    <h3 className="font-semibold">Anomalía Detectada</h3>
+            <TabsContent value="anomalies" className="mt-6">
+              <Card className="p-10 bg-white/90 backdrop-blur-xl shadow-3xl text-center">
+                {anomalies?.anomaliesFound === 0 ? (
+                  <div className="py-20">
+                    <CheckCircle2 className="w-24 h-24 text-emerald-600 mx-auto mb-6" />
+                    <p className="text-3xl font-bold text-gray-700">¡Todo perfecto!</p>
+                    <p className="text-xl text-gray-600 mt-3">No hay anomalías en {currentMaceta?.name}</p>
                   </div>
-                  <div className="text-sm space-y-1">
-                    <p>
-                      <strong>Fecha:</strong> {a.timestamp}
-                    </p>
-                    <p>
-                      <strong>Valor:</strong> {a.value}
-                    </p>
-                    <p>
-                      <strong>Rango esperado:</strong> {a.expectedRange?.min} - {a.expectedRange?.max}
-                    </p>
-                    <p>
-                      <strong>Desviación:</strong>{" "}
-                      {a?.deviation !== undefined ? a.deviation.toFixed(2) : "N/A"}
-                    </p>
+                ) : (
+                  <div className="text-4xl font-black text-orange-600">
+                    {anomalies?.anomaliesFound} anomalías detectadas
                   </div>
-                </Card>
-              ))
-            ) : (
-              <div className="text-center text-muted-foreground py-6">No se detectaron anomalías.</div>
-            )}
-          </TabsContent>
-
-          {/* 🧮 PATRONES */}
-          <TabsContent value="patterns" className="space-y-4">
-            {dailyPatterns ? (
-              <Card className="p-6">
-                <div className="flex items-center gap-2 mb-3">
-                  <BarChart3 className="w-5 h-5 text-chart-1" />
-                  <h3 className="font-semibold">Patrones de las últimas 48h</h3>
-                </div>
-                <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
-                  {JSON.stringify(dailyPatterns, null, 2)}
-                </pre>
+                )}
               </Card>
-            ) : (
-              <div className="text-center text-muted-foreground py-6">No se detectaron patrones.</div>
-            )}
-          </TabsContent>
-        </Tabs>
+            </TabsContent>
 
-        {/* 🕒 Última actualización */}
-        {lastUpdate && (
-          <Card className="p-4 bg-accent/50 text-center">
-            <p className="text-sm text-muted-foreground">
-              Última actualización: <span className="font-medium">{lastUpdate}</span>
-            </p>
-          </Card>
-        )}
+            <TabsContent value="patterns" className="mt-6">
+              <Card className="p-10 bg-white/90 backdrop-blur-xl shadow-3xl">
+                <h3 className="text-3xl font-black mb-8 text-center">Patrones Diarios de {currentMaceta?.name}</h3>
+                <div className="text-center py-16">
+                  <BarChart3 className="w-20 h-20 text-purple-600 mx-auto mb-6" />
+                  <p className="text-2xl text-gray-600">Análisis horario en desarrollo...</p>
+                </div>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="insights" className="mt-6">
+              <Card className="p-16 bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-center shadow-3xl">
+                <Sparkles className="w-32 h-32 mx-auto mb-8 opacity-80" />
+                <h3 className="text-5xl font-black mb-6">{currentMaceta?.name} está {health?.status.toLowerCase()}</h3>
+                <p className="text-3xl leading-relaxed">
+                  {currentMaceta?.name} te agradece tus cuidados
+                </p>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </div>
-  )
+  );
 }
