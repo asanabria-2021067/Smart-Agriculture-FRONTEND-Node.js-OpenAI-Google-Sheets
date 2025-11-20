@@ -9,7 +9,7 @@ const PIPE_WIDTH = 60
 const PIPE_GAP = 150
 const PLANT_SIZE = 40
 
-type Pipe = { x: number; topHeight: number }
+type Pipe = { x: number; topHeight: number; scored: boolean }
 
 export default function FlappyPlant() {
   const [plantY, setPlantY] = useState(GAME_HEIGHT / 2)
@@ -42,11 +42,13 @@ export default function FlappyPlant() {
       setVelocity((prev) => prev + 0.5)
 
       setPipes((prev) => {
-        const newPipes = prev.map((pipe) => ({ ...pipe, x: pipe.x - 3 })).filter((pipe) => pipe.x > -PIPE_WIDTH)
+        const newPipes = prev
+          .map((pipe) => ({ ...pipe, x: pipe.x - 3 }))
+          .filter((pipe) => pipe.x > -PIPE_WIDTH)
 
         if (newPipes.length === 0 || newPipes[newPipes.length - 1].x < 300) {
           const topHeight = Math.random() * (GAME_HEIGHT - PIPE_GAP - 100) + 50
-          newPipes.push({ x: 400, topHeight })
+          newPipes.push({ x: 400, topHeight, scored: false })
         }
 
         return newPipes
@@ -60,11 +62,23 @@ export default function FlappyPlant() {
     if (!gameStarted || gameOver) return
 
     pipes.forEach((pipe) => {
-      if (pipe.x < 60 && pipe.x > 20 && (plantY < pipe.topHeight || plantY + PLANT_SIZE > pipe.topHeight + PIPE_GAP)) {
-        setGameOver(true)
+      const plantLeft = 20
+      const plantRight = 20 + PLANT_SIZE
+      const pipeLeft = pipe.x
+      const pipeRight = pipe.x + PIPE_WIDTH
+
+      if (plantRight > pipeLeft && plantLeft < pipeRight) {
+        if (plantY < pipe.topHeight || plantY + PLANT_SIZE > pipe.topHeight + PIPE_GAP) {
+          setGameOver(true)
+        }
       }
 
-      if (pipe.x === 57) {
+      if (!pipe.scored && pipe.x + PIPE_WIDTH < 20) {
+        setPipes(prevPipes => 
+          prevPipes.map(p => 
+            p.x === pipe.x ? { ...p, scored: true } : p
+          )
+        )
         setScore((prev) => prev + 1)
       }
     })

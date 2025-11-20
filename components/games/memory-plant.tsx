@@ -14,6 +14,7 @@ export default function MemoryPlant() {
   const [score, setScore] = useState(0)
   const [moves, setMoves] = useState(0)
   const [gameOver, setGameOver] = useState(false)
+  const [isChecking, setIsChecking] = useState(false)
 
   useEffect(() => {
     initializeGame()
@@ -36,46 +37,63 @@ export default function MemoryPlant() {
     setScore(0)
     setMoves(0)
     setGameOver(false)
+    setIsChecking(false)
   }
 
   useEffect(() => {
-    if (flippedCards.length === 2) {
-      const [first, second] = flippedCards
-      const firstCard = cards[first]
-      const secondCard = cards[second]
+    if (flippedCards.length === 2 && !isChecking) {
+      setIsChecking(true)
+      const [firstId, secondId] = flippedCards
+      const firstCard = cards.find(c => c.id === firstId)
+      const secondCard = cards.find(c => c.id === secondId)
 
-      if (firstCard.plant === secondCard.plant) {
+      if (firstCard && secondCard && firstCard.plant === secondCard.plant) {
         setTimeout(() => {
           setCards((prev) =>
             prev.map((card) =>
-              card.id === first || card.id === second ? { ...card, matched: true, flipped: true } : card,
-            ),
+              card.id === firstId || card.id === secondId 
+                ? { ...card, matched: true } 
+                : card
+            )
           )
           setScore((prev) => prev + 100)
           setFlippedCards([])
+          setIsChecking(false)
 
-          if (cards.filter((c) => !c.matched).length === 2) {
+          const unmatchedCount = cards.filter(
+            c => !c.matched && c.id !== firstId && c.id !== secondId
+          ).length
+          
+          if (unmatchedCount === 0) {
             setTimeout(() => setGameOver(true), 500)
           }
-        }, 500)
+        }, 600)
       } else {
         setTimeout(() => {
           setCards((prev) =>
-            prev.map((card) => (card.id === first || card.id === second ? { ...card, flipped: false } : card)),
+            prev.map((card) =>
+              card.id === firstId || card.id === secondId 
+                ? { ...card, flipped: false } 
+                : card
+            )
           )
           setFlippedCards([])
+          setIsChecking(false)
         }, 1000)
       }
       setMoves((prev) => prev + 1)
     }
-  }, [flippedCards, cards])
+  }, [flippedCards, cards, isChecking])
 
   const handleCardClick = (id: number) => {
-    if (flippedCards.length === 2 || cards[id].flipped || cards[id].matched) {
+    const card = cards.find(c => c.id === id)
+    if (!card || isChecking || card.flipped || card.matched || flippedCards.length >= 2) {
       return
     }
 
-    setCards((prev) => prev.map((card) => (card.id === id ? { ...card, flipped: true } : card)))
+    setCards((prev) => 
+      prev.map((c) => c.id === id ? { ...c, flipped: true } : c)
+    )
     setFlippedCards((prev) => [...prev, id])
   }
 
@@ -103,7 +121,7 @@ export default function MemoryPlant() {
             <button
               key={card.id}
               onClick={() => handleCardClick(card.id)}
-              disabled={card.matched || card.flipped}
+              disabled={card.matched || card.flipped || isChecking}
               className={`
                 w-16 h-16 rounded-lg flex items-center justify-center text-4xl
                 transition-all duration-300 transform
@@ -112,7 +130,8 @@ export default function MemoryPlant() {
                     ? "bg-white dark:bg-gray-800 scale-100"
                     : "bg-purple-400 dark:bg-purple-700 hover:scale-105 cursor-pointer"
                 }
-                ${card.matched ? "opacity-60" : "opacity-100"}
+                ${card.matched ? "opacity-60 ring-2 ring-green-500" : "opacity-100"}
+                ${isChecking && (card.flipped || card.matched) ? "" : ""}
               `}
             >
               {card.flipped || card.matched ? card.plant : "❓"}
@@ -125,7 +144,7 @@ export default function MemoryPlant() {
 
       {gameOver && (
         <Card className="p-6 text-center bg-primary/10 w-full">
-          <h3 className="text-xl font-bold mb-2">¡Felicidades!</h3>
+          <h3 className="text-xl font-bold mb-2">¡Felicidades! 🎉</h3>
           <p className="text-muted-foreground mb-2">Puntuación: {score}</p>
           <p className="text-muted-foreground mb-4">Movimientos: {moves}</p>
           <Button onClick={initializeGame} className="w-full">

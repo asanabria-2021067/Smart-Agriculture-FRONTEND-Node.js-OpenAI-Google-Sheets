@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Gamepad2, Grid3x3, Mountain, Apple, Sparkles, Droplets, Brain, Bird } from "lucide-react"
+import { Gamepad2, Grid3x3, Mountain, Apple, Sparkles, Droplets, Brain, Bird, Car, Grid2x2 } from "lucide-react"
 import PlantTetris from "@/components/games/plant-tetris"
 import PlantParkour from "@/components/games/plant-parkour"
 import FeedPlant from "@/components/games/feed-plant"
@@ -12,6 +12,8 @@ import CleanPlant from "@/components/games/clean-plant"
 import WaterPlant from "@/components/games/water-plant"
 import MemoryPlant from "@/components/games/memory-plant"
 import FlappyPlant from "@/components/games/flappy-plant"
+import PlantHillClimb from "@/components/games/plant-hill"
+import PlantSnake from "@/components/games/snake-plant"
 
 interface GamesModalProps {
   open: boolean
@@ -19,7 +21,7 @@ interface GamesModalProps {
   plantName: string
 }
 
-type GameType = "menu" | "tetris" | "parkour" | "feed" | "clean" | "water" | "memory" | "flappy"
+type GameType = "menu" | "tetris" | "parkour" | "feed" | "clean" | "water" | "memory" | "flappy" | "hillclimb" | "snake"
 
 export default function GamesModal({ open, onOpenChange, plantName }: GamesModalProps) {
   const [currentGame, setCurrentGame] = useState<GameType>("menu")
@@ -32,7 +34,7 @@ export default function GamesModal({ open, onOpenChange, plantName }: GamesModal
     {
       id: "feed" as GameType,
       title: "Alimentar Planta",
-      description: "Dale comida antes de que el hambre llegue a 0",
+      description: "Dale comida antes de que la nutrición llegue a 0",
       icon: Apple,
       gradient: "from-red-400 to-red-600",
     },
@@ -63,6 +65,20 @@ export default function GamesModal({ open, onOpenChange, plantName }: GamesModal
       description: "Mantén tu planta volando sin chocar",
       icon: Bird,
       gradient: "from-cyan-400 to-cyan-600",
+    },
+    {
+      id: "snake" as GameType,
+      title: "Plant Snake",
+      description: "Come frutas y crece sin chocarte",
+      icon: Grid2x2,
+      gradient: "from-lime-400 to-lime-600",
+    },
+    {
+      id: "hillclimb" as GameType,
+      title: "Hill Climb Racing",
+      description: "Conduce por las montañas sin volcarte",
+      icon: Car,
+      gradient: "from-orange-400 to-orange-600",
     },
     {
       id: "tetris" as GameType,
@@ -124,7 +140,7 @@ export default function GamesModal({ open, onOpenChange, plantName }: GamesModal
 
         {currentGame !== "menu" && (
           <div className="p-6 pt-0">
-            <Button onClick={handleBack} variant="outline" className="mb-4 bg-transparent">
+            <Button onClick={handleBack} variant="outline" className="mb-4">
               ← Volver al menú
             </Button>
             {currentGame === "feed" && <FeedPlant />}
@@ -132,6 +148,8 @@ export default function GamesModal({ open, onOpenChange, plantName }: GamesModal
             {currentGame === "water" && <WaterPlant />}
             {currentGame === "memory" && <MemoryPlant />}
             {currentGame === "flappy" && <FlappyPlant />}
+            {currentGame === "snake" && <PlantSnake />}
+            {currentGame === "hillclimb" && <PlantHillClimb />}
             {currentGame === "tetris" && <PlantTetris />}
             {currentGame === "parkour" && <PlantParkour />}
           </div>

@@ -24,33 +24,30 @@ import WateringAnimation from "@/components/watering-animation"
 import { API_CONFIG, getApiUrl, apiRequest } from "@/lib/config"
 
 export default function Controls() {
-  const [autoMode, setAutoMode] = useState(false);
-  const [selectedPot, setSelectedPot] = useState<number | null>(null);
-  const [duration, setDuration] = useState([30]);
-  const [isWatering, setIsWatering] = useState(false);
-  const [irrigationStatus, setIrrigationStatus] = useState<any>(null);
-  const [isMoving, setIsMoving] = useState(false);
-  const [lowerAngle, setLowerAngle] = useState(155);
-  const [upperAngle, setUpperAngle] = useState(65);
+  const [autoMode, setAutoMode] = useState(false)
+  const [selectedPot, setSelectedPot] = useState<number | null>(null)
+  const [duration, setDuration] = useState([30])
+  const [isWatering, setIsWatering] = useState(false)
+  const [irrigationStatus, setIrrigationStatus] = useState<any>(null)
+  const [isMoving, setIsMoving] = useState(false)
+  const [lowerAngle, setLowerAngle] = useState(65)
+  const [upperAngle, setUpperAngle] = useState(90)
 
-  // === Servo base (360°) ===
-  const handleBaseMove = async (direction: "left" | "right") => {
-  setIsMoving(true);
-  console.log("Sending direction:", direction); // Debug log
-  try {
-    const response = await apiRequest(API_CONFIG.endpoints.servo.base, {
+  const handleBaseMove = async (direction: "left" | "right" | "stop") => {
+    setIsMoving(direction !== "stop")
+    await apiRequest(API_CONFIG.endpoints.servo.base, {
       method: "POST",
       body: JSON.stringify({ direction }),
-    });
-    console.log("Response:", response); // Debug log
-  } catch (error) {
-    console.error("Error moving base:", error);
-  } finally {
-    setIsMoving(false);
+    })
   }
-};
 
-  // === Servo brazo inferior (180°) ===
+  const handleBaseStop = async () => {
+    await apiRequest(API_CONFIG.endpoints.servo.base, {
+      method: "POST",
+      body: JSON.stringify({ direction: "stop" }),
+    })
+  }
+
   const handleLowerMove = async (delta: number) => {
     const newAngle = Math.max(0, Math.min(180, lowerAngle + delta))
     setLowerAngle(newAngle)
@@ -102,7 +99,8 @@ export default function Controls() {
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+                  throw new Error(`HTTP error! status: ${response.status}`)
+
       }
 
       const data = await response.json()
@@ -125,7 +123,8 @@ export default function Controls() {
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+                  throw new Error(`HTTP error! status: ${response.status}`)
+
       }
 
       const data = await response.json()
@@ -167,99 +166,87 @@ export default function Controls() {
                 </Badge>
               </div>
 
-          <p className="text-sm text-muted-foreground mb-6">
-            Controla el brazo robótico en tiempo real. Usa los botones o los
-            sliders.
-          </p>
+              <div className="bg-gradient-to-br from-accent/30 to-accent/10 rounded-xl p-6 mb-6">
+                <p className="text-sm font-medium mb-4 text-center">Controles Direccionales</p>
+                <div className="grid grid-cols-3 gap-4 max-w-sm mx-auto">
+                  <div />
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="h-20 w-full bg-background hover:bg-primary hover:text-primary-foreground transition-all shadow-md hover:shadow-lg hover:scale-105"
+                    onMouseDown={() => handleLowerMove(-10)}
+                  >
+                    <ArrowUp className="w-8 h-8" />
+                  </Button>
+                  <div />
 
-          {/* === Controles direccionales === */}
-          <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto">
-            <div />
-            <Button
-              variant="outline"
-              className="h-16"
-              onClick={() => handleLowerMove(-10)}
-            >
-              <ArrowUp className="w-6 h-6" />
-            </Button>
-            <div />
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="h-20 w-full bg-background hover:bg-primary hover:text-primary-foreground transition-all shadow-md hover:shadow-lg hover:scale-105"
+                    onMouseDown={() => handleBaseMove("left")}
+                    onMouseUp={() => handleBaseMove("stop")}
+                  >
+                    <ArrowLeft className="w-8 h-8" />
+                  </Button>
 
-            <Button
-              variant="outline"
-              className="h-16"
-              onClick={() => handleBaseMove("left")}
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </Button>
-            <div />
-            <Button
-              variant="outline"
-              className="h-16"
-              onClick={() => handleBaseMove("right")}
-            >
-              <ArrowRight className="w-6 h-6" />
-            </Button>
+                  <div className="flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center">
+                      <div
+                        className={cn(
+                          "w-3 h-3 rounded-full bg-primary transition-all",
+                          isMoving && "animate-pulse scale-150",
+                        )}
+                      />
+                    </div>
+                  </div>
 
-            <div />
-            <Button
-              variant="outline"
-              className="h-16"
-              onClick={() => handleLowerMove(10)}
-            >
-              <ArrowDown className="w-6 h-6" />
-            </Button>
-            <div />
-          </div>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="h-20 w-full bg-background hover:bg-primary hover:text-primary-foreground transition-all shadow-md hover:shadow-lg hover:scale-105"
+                    onMouseDown={() => handleBaseMove("right")}
+                    onMouseUp={() => handleBaseMove("stop")}
+                  >
+                    <ArrowRight className="w-8 h-8" />
+                  </Button>
 
-          {/* === Sliders para ángulos finos === */}
-          <div className="mt-6 space-y-4">
-            <div>
-              <label className="text-sm font-medium">
-                Ángulo del brazo inferior: {lowerAngle}°
-              </label>
-              <input
-                type="range"
-                min={105}
-                max={165}
-                value={lowerAngle}
-                onChange={(e) => {
-                  const angle = Number(e.target.value);
-                  setLowerAngle(angle);
-                  handleLowerMove(angle - lowerAngle);
-                }}
-                className="w-full mt-1"                                               />
-            </div>
+                  <div />
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="h-20 w-full bg-background hover:bg-primary hover:text-primary-foreground transition-all shadow-md hover:shadow-lg hover:scale-105"
+                    onMouseDown={() => handleLowerMove(10)}
+                  >
+                    <ArrowDown className="w-8 h-8" />
+                  </Button>
+                  <div />
+                </div>
+              </div>
 
-            <div>
-              <label className="text-sm font-medium">
-                Ángulo del brazo superior: {upperAngle}°
-              </label>
-              <input
-                type="range"
-                min={0}
-                max={180}
-                value={upperAngle}
-                onChange={(e) => {
-                  const angle = Number(e.target.value);
-                  setUpperAngle(angle);
-                  handleUpperMove(angle - upperAngle);
-                }}
-                className="w-full mt-1"
-              />
-            </div>
-          </div>
-        </Card>
-
-        {/* Pot Selection */}
-        <Card className="p-6 bg-gradient-to-br from-card to-accent/30">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-balance">
-              Selección de Maceta
-            </h2>
-            <Badge variant="secondary" className="text-xs">
-              Beta
-            </Badge>
-          </div>
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-950/40 dark:to-blue-900/20 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-semibold">Brazo Inferior</label>
+                    <div className="text-2xl font-bold text-blue-600">{lowerAngle}°</div>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={65}
+                    value={lowerAngle}
+                    onChange={(e) => {
+                      const angle = Number(e.target.value)
+                      setLowerAngle(angle)
+                      handleLowerMove(angle - lowerAngle)
+                    }}
+                    className="w-full h-3 rounded-lg appearance-none cursor-pointer bg-blue-200 dark:bg-blue-900/50 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:hover:bg-blue-700 [&::-webkit-slider-thumb]:transition-all"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                    <span>0°</span>
+                    <span>65°</span>
+                  </div>
+                </div>
 
                 <div className="bg-gradient-to-r from-purple-50 to-purple-100/50 dark:from-purple-950/40 dark:to-purple-900/20 rounded-xl p-5">
                   <div className="flex items-center justify-between mb-3">
