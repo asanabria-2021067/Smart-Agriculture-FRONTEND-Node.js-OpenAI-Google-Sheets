@@ -163,7 +163,7 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Temperatura - color azul pastel */}
           <Card className="relative p-6 border-0 bg-gradient-to-br from-blue-50 to-blue-100 overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full opacity-20">
@@ -198,53 +198,12 @@ export default function Dashboard() {
             </div>
           </Card>
 
-          {/* Humedad Suelo - color morado/lavanda pastel */}
-          <Card className="relative p-6 border-0 bg-gradient-to-br from-purple-50 to-purple-100 overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-full opacity-20">
-              <div className="absolute top-4 right-4 w-32 h-32 bg-purple-200 rounded-full blur-3xl" />
-            </div>
-            <div className="relative">
-              <div className="flex items-start justify-between mb-3">
-                <div className="p-3 rounded-2xl bg-purple-500/10">
-                  <Droplets className="w-7 h-7 text-purple-600" />
-                </div>
-                <div className="flex items-center gap-1 text-xs font-semibold text-red-600">
-
-                </div>
-              </div>
-              <p className="text-sm font-medium text-slate-600 mb-2">Humedad Suelo</p>
-              <p className="text-4xl font-bold text-slate-900 mb-3">{current?.humedadSuelo.toFixed(0) || "--"}%</p>
-              <div className="h-12 -mx-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={miniChartDataSuelo}>
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke="#a855f7"
-                      strokeWidth={2}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </Card>
-
           {/* Humedad Aire - color amarillo/naranja pastel */}
           <Card className="relative p-6 border-0 bg-gradient-to-br from-amber-50 to-amber-100 overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full opacity-20">
               <div className="absolute top-4 right-4 w-32 h-32 bg-amber-200 rounded-full blur-3xl" />
             </div>
             <div className="relative">
-              <div className="flex items-start justify-between mb-3">
-                <div className="p-3 rounded-2xl bg-amber-500/10">
-                  <Cloud className="w-7 h-7 text-amber-600" />
-                </div>
-                <div className="flex items-center gap-1 text-xs font-semibold text-green-600">
-
-                </div>
-              </div>
               <p className="text-sm font-medium text-slate-600 mb-2">Humedad Aire</p>
               <p className="text-4xl font-bold text-slate-900 mb-3">{current?.humedadAire.toFixed(0) || "--"}%</p>
               <div className="h-12 -mx-2">
@@ -302,7 +261,7 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-1 gap-6">
           <Card className="p-6 bg-white border-slate-200">
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-slate-900">Temperatura ambiente</h3>
@@ -334,30 +293,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </Card>
 
-          <Card className="p-6 bg-white border-slate-200">
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-slate-900">Humedad del suelo</h3>
-              <p className="text-sm text-slate-500">Últimas 48 horas</p>
-            </div>
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={chartData.filter((_, i) => i % 3 === 0)}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="hora" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "white",
-                    borderRadius: "8px",
-                    border: "1px solid #e2e8f0",
-                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                  }}
-                  labelStyle={{ color: "#0f172a", fontWeight: 600 }}
-                  cursor={{ fill: "rgba(148, 163, 184, 0.1)" }}
-                />
-                <Bar dataKey="suelo" fill="#a855f7" radius={[4, 4, 0, 0]} name="Humedad (%)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
+          
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -6,33 +6,36 @@ import { Button } from "@/components/ui/button"
 import { Droplets } from "lucide-react"
 
 export default function WaterPlant() {
-  const [waterLevel, setWaterLevel] = useState(50)
+  const [waterLevel, setWaterLevel] = useState(0)
   const [targetZone, setTargetZone] = useState({ min: 40, max: 60 })
   const [score, setScore] = useState(0)
   const [gameOver, setGameOver] = useState(false)
   const [isWatering, setIsWatering] = useState(false)
   const [round, setRound] = useState(1)
   const [attempts, setAttempts] = useState(3)
+  const [bestScore, setBestScore] = useState(0)
 
   const generateNewTarget = useCallback(() => {
-    const min = Math.floor(Math.random() * 50) + 20
-    const max = min + 20
+    const difficulty = Math.min(round, 10)
+    const zoneSize = Math.max(15, 25 - difficulty)
+    const min = Math.floor(Math.random() * (85 - zoneSize - 15)) + 15
+    const max = min + zoneSize
     setTargetZone({ min, max })
     setWaterLevel(0)
-  }, [])
+  }, [round])
 
   useEffect(() => {
     if (isWatering && !gameOver) {
       const interval = setInterval(() => {
-        setWaterLevel((prev) => Math.min(100, prev + 2))
-      }, 50)
+        setWaterLevel((prev) => Math.min(100, prev + 1.5))
+      }, 30)
 
       return () => clearInterval(interval)
     }
   }, [isWatering, gameOver])
 
   const startWatering = () => {
-    if (gameOver) return
+    if (gameOver || waterLevel >= 100) return
     setIsWatering(true)
   }
 
@@ -42,25 +45,33 @@ export default function WaterPlant() {
     setIsWatering(false)
 
     if (waterLevel >= targetZone.min && waterLevel <= targetZone.max) {
-      const accuracy = 100 - Math.abs(waterLevel - (targetZone.min + targetZone.max) / 2)
-      const points = Math.round(accuracy * round)
-      setScore((prev) => prev + points)
+      const center = (targetZone.min + targetZone.max) / 2
+      const accuracy = 100 - Math.abs(waterLevel - center) * 2
+      const points = Math.round(Math.max(50, accuracy) * round)
+      setScore((prev) => {
+        const newScore = prev + points
+        if (newScore > bestScore) {
+          setBestScore(newScore)
+        }
+        return newScore
+      })
       setRound((prev) => prev + 1)
-      generateNewTarget()
+      setTimeout(() => generateNewTarget(), 500)
     } else {
       setAttempts((prev) => {
         const newAttempts = prev - 1
         if (newAttempts === 0) {
           setGameOver(true)
+        } else {
+          setTimeout(() => setWaterLevel(0), 500)
         }
         return newAttempts
       })
-      setWaterLevel(0)
     }
   }
 
   const resetGame = () => {
-    setWaterLevel(50)
+    setWaterLevel(0)
     setTargetZone({ min: 40, max: 60 })
     setScore(0)
     setGameOver(false)
@@ -70,6 +81,8 @@ export default function WaterPlant() {
   }
 
   const isInTarget = waterLevel >= targetZone.min && waterLevel <= targetZone.max
+  const isPerfect = waterLevel >= (targetZone.min + targetZone.max) / 2 - 2 && 
+                     waterLevel <= (targetZone.min + targetZone.max) / 2 + 2
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -101,13 +114,13 @@ export default function WaterPlant() {
           <div className="relative w-full h-64 bg-white/50 dark:bg-black/30 rounded-lg overflow-hidden border-4 border-gray-300 dark:border-gray-700">
             <div
               className="absolute top-0 left-0 right-0 bg-red-200/50 dark:bg-red-900/30 border-b-2 border-red-400"
-              style={{ height: `${targetZone.min}%` }}
+              style={{ height: `${100 - targetZone.max}%` }}
             />
 
             <div
-              className="absolute left-0 right-0 bg-green-200/50 dark:bg-green-900/30 border-y-2 border-green-500"
+              className="absolute left-0 right-0 bg-green-200/60 dark:bg-green-900/40 border-y-2 border-green-500"
               style={{
-                top: `${targetZone.min}%`,
+                bottom: `${targetZone.min}%`,
                 height: `${targetZone.max - targetZone.min}%`,
               }}
             >
@@ -117,13 +130,13 @@ export default function WaterPlant() {
             </div>
 
             <div
-              className="absolute bottom-0 left-0 right-0 bg-red-200/50 dark:bg-red-900/30 border-t-2 border-red-400"
-              style={{ height: `${100 - targetZone.max}%` }}
+              className="absolute top-0 left-0 right-0 bg-red-200/50 dark:bg-red-900/30 border-t-2 border-red-400"
+              style={{ height: `${targetZone.min}%` }}
             />
 
             <div
               className={`absolute bottom-0 left-0 right-0 transition-all duration-100 ${
-                isInTarget ? "bg-green-500" : "bg-blue-500"
+                isPerfect ? "bg-yellow-400" : isInTarget ? "bg-green-500" : "bg-blue-500"
               }`}
               style={{ height: `${waterLevel}%` }}
             >
@@ -132,35 +145,42 @@ export default function WaterPlant() {
               </div>
             </div>
 
-            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center text-2xl font-bold text-gray-700 dark:text-gray-300 pointer-events-none">
-              {waterLevel}%
+            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center text-2xl font-bold text-gray-700 dark:text-gray-300 pointer-events-none [text-shadow:_0_1px_8px_rgb(255_255_255_/_80%)]">
+              {waterLevel.toFixed(0)}%
             </div>
           </div>
 
           <Button
             onMouseDown={startWatering}
             onMouseUp={stopWatering}
+            onMouseLeave={stopWatering}
             onTouchStart={startWatering}
             onTouchEnd={stopWatering}
-            disabled={gameOver}
+            disabled={gameOver || waterLevel >= 100}
             size="lg"
             className="w-full h-16 text-lg"
           >
             <Droplets className="w-6 h-6 mr-2" />
-            {isWatering ? "Regando..." : "Mantén presionado para regar"}
+            {isWatering ? "Regando..." : waterLevel >= 100 ? "¡Lleno!" : "Mantén presionado para regar"}
           </Button>
         </div>
       </Card>
 
       <div className="text-xs text-muted-foreground text-center">
-        Mantén presionado el botón y suéltalo cuando el nivel esté en la zona verde
+        Mantén presionado el botón y suéltalo cuando el nivel esté en la zona verde<br/>
+        ¡La zona se hace más pequeña en cada ronda!
       </div>
 
       {gameOver && (
         <Card className="p-6 text-center bg-destructive/10 border-destructive w-full">
           <h3 className="text-xl font-bold mb-2">¡Juego Terminado!</h3>
-          <p className="text-muted-foreground mb-4">Puntuación final: {score}</p>
-          <p className="text-sm text-muted-foreground mb-4">Llegaste a la ronda {round}</p>
+          <p className="text-muted-foreground mb-2">Puntuación final: {score}</p>
+          <p className="text-sm text-muted-foreground mb-2">Llegaste a la ronda {round}</p>
+          {bestScore > 0 && (
+            <p className="text-sm text-green-600 dark:text-green-400 mb-4">
+              Mejor puntuación: {bestScore}
+            </p>
+          )}
           <Button onClick={resetGame} className="w-full">
             Intentar de nuevo
           </Button>

@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils"
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Send, Bot, User, Trash2, Loader2, Sparkles } from "lucide-react"
+import { Send, Bot, User, Trash2, Loader2, Sparkles, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { API_CONFIG, getApiUrl } from "@/lib/config"
@@ -17,11 +17,16 @@ interface Message {
 
 const quickSuggestions = ["¿Cómo está mi planta 1?", "Muestra estadísticas", "¿Necesita agua alguna de mis plantas?", "Datos de hoy"]
 
+const OPENAI_API_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || ""
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [audioEnabled, setAudioEnabled] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -30,6 +35,65 @@ export default function Chat() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+      audioRef.current = null
+    }
+    setIsSpeaking(false)
+  }
+
+  const textToSpeech = async (text: string) => {
+    if (!audioEnabled) return
+
+    try {
+      stopAudio()
+      setIsSpeaking(true)
+
+      const response = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "tts-1",
+          input: text,
+          voice: "nova",
+          speed: 1.0,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Error en TTS: ${response.status}`)
+      }
+
+      const audioBlob = await response.blob()
+      const audioUrl = URL.createObjectURL(audioBlob)
+      
+      const audio = new Audio(audioUrl)
+      audioRef.current = audio
+
+      audio.onended = () => {
+        setIsSpeaking(false)
+        URL.revokeObjectURL(audioUrl)
+        audioRef.current = null
+      }
+
+      audio.onerror = () => {
+        setIsSpeaking(false)
+        console.error("Error al reproducir audio")
+        audioRef.current = null
+      }
+
+      await audio.play()
+    } catch (error) {
+      console.error("Error en text-to-speech:", error)
+      setIsSpeaking(false)
+    }
+  }
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return
@@ -57,15 +121,19 @@ export default function Chat() {
       }
 
       const data = await response.json()
+      const responseText = data.message || "Lo siento, no pude procesar tu mensaje."
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: data.message || "Lo siento, no pude procesar tu mensaje.",
+        content: responseText,
         timestamp: new Date(),
       }
 
       setMessages((prev) => [...prev, assistantMessage])
+      
+      // Reproducir la respuesta con voz
+      await textToSpeech(responseText)
     } catch (error) {
       console.error("Error sending message:", error)
       const errorMessage: Message = {
@@ -75,6 +143,10 @@ export default function Chat() {
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, errorMessage])
+      
+      if (audioEnabled) {
+        await textToSpeech(errorMessage.content)
+      }
     } finally {
       setLoading(false)
     }
@@ -87,6 +159,7 @@ export default function Chat() {
 
   const clearChat = async () => {
     try {
+      stopAudio()
       await fetch(getApiUrl(API_CONFIG.endpoints.chatClear), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -96,6 +169,13 @@ export default function Chat() {
     } catch (error) {
       console.error("Error clearing chat:", error)
       setMessages([])
+    }
+  }
+
+  const toggleAudio = () => {
+    setAudioEnabled(!audioEnabled)
+    if (audioEnabled) {
+      stopAudio()
     }
   }
 
@@ -114,25 +194,40 @@ export default function Chat() {
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Asistente IA</h2>
                 {loading && <Sparkles className="w-4 h-4 text-blue-500 animate-pulse" />}
+                {isSpeaking && <Volume2 className="w-4 h-4 text-green-500 animate-pulse" />}
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2 mt-0.5">
                 <span
-                  className={cn("w-2 h-2 rounded-full", loading ? "bg-amber-500 animate-pulse" : "bg-emerald-500")}
+                  className={cn("w-2 h-2 rounded-full", loading ? "bg-amber-500 animate-pulse" : isSpeaking ? "bg-green-500 animate-pulse" : "bg-emerald-500")}
                 />
-                {loading ? "Pensando..." : "En línea"}
+                {loading ? "Pensando..." : isSpeaking ? "Hablando..." : "En línea"}
               </p>
             </div>
           </div>
-          {messages.length > 0 && (
+          <div className="flex gap-2">
             <Button
               variant="ghost"
               size="icon"
-              className="hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600 dark:hover:text-red-400 transition-colors rounded-xl"
-              onClick={clearChat}
+              className={cn(
+                "hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors rounded-xl",
+                audioEnabled ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-600"
+              )}
+              onClick={toggleAudio}
+              title={audioEnabled ? "Desactivar voz" : "Activar voz"}
             >
-              <Trash2 className="w-5 h-5" />
+              {audioEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </Button>
-          )}
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600 dark:hover:text-red-400 transition-colors rounded-xl"
+                onClick={clearChat}
+              >
+                <Trash2 className="w-5 h-5" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -149,12 +244,16 @@ export default function Chat() {
               <h3 className="text-2xl font-bold mb-3 text-slate-900 dark:text-slate-100 text-balance">
                 ¡Hola! Soy tu asistente de agricultura
               </h3>
-              <p className="text-slate-600 dark:text-slate-400 mb-8 text-lg">
+              <p className="text-slate-600 dark:text-slate-400 mb-4 text-lg">
                 Pregúntame sobre tus plantas, sensores o sistema de riego
+              </p>
+              <p className="text-sm text-green-600 dark:text-green-400 mb-8 flex items-center justify-center gap-2">
+                <Volume2 className="w-4 h-4" />
+                Mis respuestas se reproducirán con voz
               </p>
 
               <div className="flex flex-wrap gap-3 justify-center max-w-2xl mx-auto">
-                {quickSuggestions.map((suggestion, index) => (
+                {quickSuggestions.map((suggestion) => (
                   <Button
                     key={suggestion}
                     variant="outline"

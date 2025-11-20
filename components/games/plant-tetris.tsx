@@ -23,12 +23,29 @@ const PLANT_SHAPES = [
     [1, 1],
   ],
   [
+    [0, 1],
+    [0, 1],
+    [1, 1],
+  ],
+  [
     [1, 1, 0],
     [0, 1, 1],
   ],
+  [
+    [0, 1, 1],
+    [1, 1, 0],
+  ],
 ]
 
-const PLANT_COLORS = ["bg-green-500", "bg-green-600", "bg-green-700", "bg-lime-500", "bg-emerald-500"]
+const PLANT_COLORS = [
+  "bg-green-500",
+  "bg-green-600", 
+  "bg-green-700",
+  "bg-lime-500",
+  "bg-emerald-500",
+  "bg-teal-500",
+  "bg-cyan-600"
+]
 
 type Board = number[][]
 type Piece = { shape: number[][]; x: number; y: number; color: number }
@@ -37,18 +54,21 @@ export default function PlantTetris() {
   const [board, setBoard] = useState<Board>(() =>
     Array(BOARD_HEIGHT)
       .fill(null)
-      .map(() => Array(BOARD_WIDTH).fill(0)),
+      .map(() => Array(BOARD_WIDTH).fill(0))
   )
   const [currentPiece, setCurrentPiece] = useState<Piece | null>(null)
   const [score, setScore] = useState(0)
+  const [level, setLevel] = useState(1)
+  const [lines, setLines] = useState(0)
   const [gameOver, setGameOver] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
+  const [dropSpeed, setDropSpeed] = useState(500)
 
   const createNewPiece = useCallback((): Piece => {
     const shapeIndex = Math.floor(Math.random() * PLANT_SHAPES.length)
     return {
       shape: PLANT_SHAPES[shapeIndex],
-      x: Math.floor(BOARD_WIDTH / 2) - 1,
+      x: Math.floor(BOARD_WIDTH / 2) - Math.floor(PLANT_SHAPES[shapeIndex][0].length / 2),
       y: 0,
       color: shapeIndex,
     }
@@ -74,7 +94,7 @@ export default function PlantTetris() {
       }
       return false
     },
-    [board],
+    [board]
   )
 
   const mergePiece = useCallback(
@@ -95,7 +115,7 @@ export default function PlantTetris() {
 
       return newBoard
     },
-    [board],
+    [board]
   )
 
   const clearLines = useCallback((newBoard: Board) => {
@@ -113,11 +133,21 @@ export default function PlantTetris() {
     }
 
     if (linesCleared > 0) {
-      setScore((prev) => prev + linesCleared * 100)
+      const points = [0, 100, 300, 500, 800][linesCleared] || 100
+      setScore((prev) => prev + points * level)
+      setLines((prev) => {
+        const newLines = prev + linesCleared
+        const newLevel = Math.floor(newLines / 10) + 1
+        if (newLevel > level) {
+          setLevel(newLevel)
+          setDropSpeed(Math.max(100, 500 - (newLevel - 1) * 50))
+        }
+        return newLines
+      })
     }
 
     return clearedBoard
-  }, [])
+  }, [level])
 
   const movePiece = useCallback(
     (dx: number, dy: number) => {
@@ -141,17 +171,27 @@ export default function PlantTetris() {
         }
       }
     },
-    [currentPiece, gameOver, isPaused, checkCollision, mergePiece, clearLines, createNewPiece],
+    [currentPiece, gameOver, isPaused, checkCollision, mergePiece, clearLines, createNewPiece]
   )
 
   const rotatePiece = useCallback(() => {
     if (!currentPiece || gameOver || isPaused) return
 
-    const rotated = currentPiece.shape[0].map((_, i) => currentPiece.shape.map((row) => row[i]).reverse())
+    const rotated = currentPiece.shape[0].map((_, i) =>
+      currentPiece.shape.map((row) => row[i]).reverse()
+    )
 
     const rotatedPiece = { ...currentPiece, shape: rotated }
+    
     if (!checkCollision(rotatedPiece, rotatedPiece.x, rotatedPiece.y)) {
       setCurrentPiece(rotatedPiece)
+    } else {
+      for (let offset of [-1, 1, -2, 2]) {
+        if (!checkCollision(rotatedPiece, rotatedPiece.x + offset, rotatedPiece.y)) {
+          setCurrentPiece({ ...rotatedPiece, x: rotatedPiece.x + offset })
+          return
+        }
+      }
     }
   }, [currentPiece, gameOver, isPaused, checkCollision])
 
@@ -163,9 +203,18 @@ export default function PlantTetris() {
       newY++
     }
 
-    setCurrentPiece({ ...currentPiece, y: newY })
-    movePiece(0, 1)
-  }, [currentPiece, gameOver, isPaused, checkCollision, movePiece])
+    const droppedPiece = { ...currentPiece, y: newY }
+    const newBoard = mergePiece(droppedPiece)
+    const clearedBoard = clearLines(newBoard)
+    setBoard(clearedBoard)
+
+    const newPiece = createNewPiece()
+    if (checkCollision(newPiece, newPiece.x, newPiece.y)) {
+      setGameOver(true)
+    } else {
+      setCurrentPiece(newPiece)
+    }
+  }, [currentPiece, gameOver, isPaused, checkCollision, mergePiece, clearLines, createNewPiece])
 
   useEffect(() => {
     if (!currentPiece && !gameOver) {
@@ -178,10 +227,10 @@ export default function PlantTetris() {
 
     const interval = setInterval(() => {
       movePiece(0, 1)
-    }, 500)
+    }, dropSpeed)
 
     return () => clearInterval(interval)
-  }, [movePiece, gameOver, isPaused])
+  }, [movePiece, gameOver, isPaused, dropSpeed])
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -189,22 +238,28 @@ export default function PlantTetris() {
 
       switch (e.key) {
         case "ArrowLeft":
+          e.preventDefault()
           movePiece(-1, 0)
           break
         case "ArrowRight":
+          e.preventDefault()
           movePiece(1, 0)
           break
         case "ArrowDown":
+          e.preventDefault()
           movePiece(0, 1)
           break
         case "ArrowUp":
+          e.preventDefault()
           rotatePiece()
           break
         case " ":
+          e.preventDefault()
           hardDrop()
           break
         case "p":
         case "P":
+          e.preventDefault()
           setIsPaused((prev) => !prev)
           break
       }
@@ -218,12 +273,15 @@ export default function PlantTetris() {
     setBoard(
       Array(BOARD_HEIGHT)
         .fill(null)
-        .map(() => Array(BOARD_WIDTH).fill(0)),
+        .map(() => Array(BOARD_WIDTH).fill(0))
     )
     setCurrentPiece(null)
     setScore(0)
+    setLevel(1)
+    setLines(0)
     setGameOver(false)
     setIsPaused(false)
+    setDropSpeed(500)
   }
 
   const renderBoard = () => {
@@ -254,12 +312,22 @@ export default function PlantTetris() {
           <div className="text-2xl font-bold">{score}</div>
         </div>
 
-        <Button onClick={resetGame} variant="outline">
+        <div className="text-center">
+          <div className="text-sm text-muted-foreground">Nivel</div>
+          <div className="text-2xl font-bold">{level}</div>
+        </div>
+
+        <div className="text-center">
+          <div className="text-sm text-muted-foreground">Líneas</div>
+          <div className="text-2xl font-bold">{lines}</div>
+        </div>
+
+        <Button onClick={resetGame} variant="outline" size="sm">
           Reiniciar
         </Button>
 
-        <Button onClick={() => setIsPaused(!isPaused)} variant="outline">
-          {isPaused ? "Reanudar" : "Pausar"}
+        <Button onClick={() => setIsPaused(!isPaused)} variant="outline" size="sm">
+          {isPaused ? "▶" : "⏸"}
         </Button>
       </div>
 
@@ -275,26 +343,28 @@ export default function PlantTetris() {
             row.map((cell, x) => (
               <div
                 key={`${y}-${x}`}
-                className={`w-5 h-5 border border-gray-200 dark:border-gray-800 flex items-center justify-center ${
+                className={`w-5 h-5 border border-gray-200 dark:border-gray-800 flex items-center justify-center transition-colors ${
                   cell ? PLANT_COLORS[cell - 1] : "bg-white dark:bg-gray-950"
                 }`}
               >
                 {cell > 0 && <Leaf className="w-3 h-3 text-white/50" />}
               </div>
-            )),
+            ))
           )}
         </div>
       </Card>
 
       <div className="text-xs text-muted-foreground text-center space-y-1">
-        <div>← → Mover | ↑ Rotar | ↓ Bajar | Espacio: Caída rápida</div>
-        <div>P: Pausar</div>
+        <div>← → Mover | ↑ Rotar | ↓ Bajar | Espacio: Caída rápida | P: Pausar</div>
       </div>
 
       {gameOver && (
         <Card className="p-6 text-center bg-destructive/10 border-destructive">
           <h3 className="text-xl font-bold mb-2">¡Juego Terminado!</h3>
-          <p className="text-muted-foreground mb-4">Puntuación final: {score}</p>
+          <p className="text-muted-foreground mb-2">Puntuación final: {score}</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Nivel: {level} | Líneas: {lines}
+          </p>
           <Button onClick={resetGame} className="w-full">
             Jugar de nuevo
           </Button>
@@ -304,6 +374,7 @@ export default function PlantTetris() {
       {isPaused && !gameOver && (
         <Card className="p-6 text-center bg-primary/10">
           <h3 className="text-xl font-bold">Juego en Pausa</h3>
+          <p className="text-sm text-muted-foreground mt-2">Presiona P para continuar</p>
         </Card>
       )}
     </div>

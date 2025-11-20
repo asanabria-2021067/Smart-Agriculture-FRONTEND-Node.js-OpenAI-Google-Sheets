@@ -13,28 +13,41 @@ export default function CleanPlant() {
   const [timeLeft, setTimeLeft] = useState(30)
   const [gameOver, setGameOver] = useState(false)
   const [cleanliness, setCleanliness] = useState(100)
+  const [combo, setCombo] = useState(0)
+  const [lastCleanTime, setLastCleanTime] = useState(0)
 
   useEffect(() => {
     if (gameOver) return
 
-    const spawnDirt = () => {
+    const initialDirt = () => {
+      for (let i = 0; i < 3; i++) {
+        const newDirt: Dirt = {
+          id: Date.now() + i,
+          x: Math.random() * 70 + 15,
+          y: Math.random() * 50 + 25,
+          cleaned: false,
+        }
+        setDirts((prev) => [...prev, newDirt])
+      }
+    }
+
+    if (dirts.length === 0) {
+      initialDirt()
+    }
+
+    const interval = setInterval(() => {
       const newDirt: Dirt = {
         id: Date.now(),
-        x: Math.random() * 80 + 10,
-        y: Math.random() * 60 + 20,
+        x: Math.random() * 70 + 15,
+        y: Math.random() * 50 + 25,
         cleaned: false,
       }
       setDirts((prev) => [...prev, newDirt])
-      setCleanliness((prev) => Math.max(0, prev - 5))
-    }
+      setCleanliness((prev) => Math.max(0, prev - 3))
+    }, 2500)
 
-    spawnDirt()
-    spawnDirt()
-    spawnDirt()
-
-    const interval = setInterval(spawnDirt, 2000)
     return () => clearInterval(interval)
-  }, [gameOver])
+  }, [gameOver, dirts.length])
 
   useEffect(() => {
     if (gameOver || timeLeft === 0) return
@@ -52,12 +65,32 @@ export default function CleanPlant() {
     return () => clearInterval(timer)
   }, [gameOver, timeLeft])
 
+  useEffect(() => {
+    const now = Date.now()
+    if (now - lastCleanTime > 2000) {
+      setCombo(0)
+    }
+  }, [lastCleanTime])
+
   const cleanDirt = (id: number) => {
     if (gameOver) return
 
+    const now = Date.now()
+    let newCombo = combo
+    
+    if (now - lastCleanTime < 1000) {
+      newCombo = combo + 1
+    } else {
+      newCombo = 1
+    }
+    
+    setCombo(newCombo)
+    setLastCleanTime(now)
+
+    const points = 10 * newCombo
     setDirts((prev) => prev.map((d) => (d.id === id ? { ...d, cleaned: true } : d)))
-    setScore((prev) => prev + 10)
-    setCleanliness((prev) => Math.min(100, prev + 10))
+    setScore((prev) => prev + points)
+    setCleanliness((prev) => Math.min(100, prev + 8))
 
     setTimeout(() => {
       setDirts((prev) => prev.filter((d) => d.id !== id))
@@ -70,6 +103,8 @@ export default function CleanPlant() {
     setTimeLeft(30)
     setGameOver(false)
     setCleanliness(100)
+    setCombo(0)
+    setLastCleanTime(0)
   }
 
   return (
@@ -84,6 +119,13 @@ export default function CleanPlant() {
           <div className="text-sm text-muted-foreground">Tiempo</div>
           <div className="text-2xl font-bold">{timeLeft}s</div>
         </div>
+
+        {combo > 1 && (
+          <div className="text-center animate-pulse">
+            <div className="text-sm text-orange-600 dark:text-orange-400">Combo</div>
+            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">x{combo}</div>
+          </div>
+        )}
 
         <Button onClick={resetGame} variant="outline">
           Reiniciar
@@ -100,9 +142,10 @@ export default function CleanPlant() {
             key={dirt.id}
             onClick={() => cleanDirt(dirt.id)}
             className={`absolute w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-all ${
-              dirt.cleaned ? "scale-0 opacity-0" : "scale-100 opacity-100"
+              dirt.cleaned ? "scale-0 opacity-0" : "scale-100 opacity-100 hover:scale-110"
             }`}
             style={{ left: `${dirt.x}%`, top: `${dirt.y}%` }}
+            aria-label="Limpiar suciedad"
           >
             <div className="text-4xl">💩</div>
           </button>
@@ -129,12 +172,18 @@ export default function CleanPlant() {
         </div>
       </Card>
 
-      <div className="text-xs text-muted-foreground text-center">¡Haz clic en la suciedad para limpiar tu planta!</div>
+      <div className="text-xs text-muted-foreground text-center">
+        ¡Haz clic en la suciedad para limpiar tu planta!<br/>
+        Limpia rápido para crear combos y multiplicar tus puntos
+      </div>
 
       {gameOver && (
         <Card className="p-6 text-center bg-primary/10 w-full">
           <h3 className="text-xl font-bold mb-2">¡Tiempo terminado!</h3>
-          <p className="text-muted-foreground mb-4">Puntuación final: {score}</p>
+          <p className="text-muted-foreground mb-2">Puntuación final: {score}</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Limpieza final: {cleanliness}%
+          </p>
           <Button onClick={resetGame} className="w-full">
             Jugar de nuevo
           </Button>
