@@ -184,7 +184,7 @@ export default function PlantChatModal({
         <DialogHeader className="p-4 border-b bg-gradient-to-r from-primary/10 to-secondary/10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-3xl">{plantEmoji}</span>
+              <span className="text-3xl">🌱</span>
               <div>
                 <DialogTitle>Chat con {plantName}</DialogTitle>
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
@@ -221,7 +221,7 @@ export default function PlantChatModal({
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 && (
             <div className="text-center py-8">
-              <div className="text-5xl mb-3">{plantEmoji}</div>
+              <div className="text-5xl mb-3">🌱</div>
               <h3 className="text-lg font-semibold mb-2">¡Hola! Soy {plantName}</h3>
               <p className="text-muted-foreground text-sm mb-4">Pregúntame lo que quieras</p>
               
@@ -261,7 +261,7 @@ export default function PlantChatModal({
                 {message.role === "user" ? (
                   <User className="w-4 h-4" />
                 ) : (
-                  <span className="text-lg">{plantEmoji}</span>
+                  <span className="text-lg">🌱</span>
                 )}
               </div>
 
@@ -287,7 +287,7 @@ export default function PlantChatModal({
           {loading && (
             <div className="flex gap-3 items-start">
               <div className="p-2 rounded-lg bg-muted shrink-0">
-                <span className="text-lg">{plantEmoji}</span>
+                <span className="text-lg">🌱</span>
               </div>
               <Card className="p-3">
                 <Loader2 className="w-5 h-5 animate-spin text-primary" />

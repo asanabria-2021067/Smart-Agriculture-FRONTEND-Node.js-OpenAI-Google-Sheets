@@ -3,13 +3,13 @@
 import { useState, useEffect, useCallback } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Leaf } from 'lucide-react'
+import { Leaf } from "lucide-react"
 
 const GAME_WIDTH = 15
 const GAME_HEIGHT = 12
 
-type Position = { x: number, y: number }
-type Platform = { x: number, y: number, width: number }
+type Position = { x: number; y: number }
+type Platform = { x: number; y: number; width: number }
 
 export default function PlantParkour() {
   const [playerPos, setPlayerPos] = useState<Position>({ x: 2, y: GAME_HEIGHT - 2 })
@@ -25,35 +25,39 @@ export default function PlantParkour() {
   const [gameOver, setGameOver] = useState(false)
   const [highestY, setHighestY] = useState(GAME_HEIGHT - 2)
 
-  const isOnPlatform = useCallback((pos: Position): boolean => {
-    return platforms.some(platform => 
-      pos.x >= platform.x && 
-      pos.x < platform.x + platform.width && 
-      pos.y === platform.y - 1
-    )
-  }, [platforms])
+  const isOnPlatform = useCallback(
+    (pos: Position): boolean => {
+      return platforms.some(
+        (platform) => pos.x >= platform.x && pos.x < platform.x + platform.width && pos.y === platform.y - 1,
+      )
+    },
+    [platforms],
+  )
 
   const canMoveTo = useCallback((newPos: Position): boolean => {
     if (newPos.x < 0 || newPos.x >= GAME_WIDTH || newPos.y >= GAME_HEIGHT) {
       return false
     }
-    
+
     return true
   }, [])
 
-  const movePlayer = useCallback((dx: number) => {
-    if (gameOver) return
-    
-    const newPos = { x: playerPos.x + dx, y: playerPos.y }
-    
-    if (canMoveTo(newPos)) {
-      setPlayerPos(newPos)
-    }
-  }, [playerPos, canMoveTo, gameOver])
+  const movePlayer = useCallback(
+    (dx: number) => {
+      if (gameOver) return
+
+      const newPos = { x: playerPos.x + dx, y: playerPos.y }
+
+      if (canMoveTo(newPos)) {
+        setPlayerPos(newPos)
+      }
+    },
+    [playerPos, canMoveTo, gameOver],
+  )
 
   const jump = useCallback(() => {
     if (gameOver || isJumping) return
-    
+
     if (isOnPlatform(playerPos)) {
       setIsJumping(true)
       setVelocity(-3)
@@ -64,20 +68,16 @@ export default function PlantParkour() {
     if (gameOver) return
 
     const gravityInterval = setInterval(() => {
-      setPlayerPos(prev => {
+      setPlayerPos((prev) => {
         let newY = prev.y + 1
         let newVelocity = velocity + 0.5
 
         if (isJumping) {
           newY = prev.y + velocity
-          
+
           if (velocity >= 0) {
-            const platformBelow = platforms.find(p => 
-              prev.x >= p.x && 
-              prev.x < p.x + p.width && 
-              newY >= p.y - 1
-            )
-            
+            const platformBelow = platforms.find((p) => prev.x >= p.x && prev.x < p.x + p.width && newY >= p.y - 1)
+
             if (platformBelow) {
               newY = platformBelow.y - 1
               setIsJumping(false)
@@ -87,12 +87,8 @@ export default function PlantParkour() {
           }
         } else {
           if (!isOnPlatform({ x: prev.x, y: prev.y })) {
-            const platformBelow = platforms.find(p => 
-              prev.x >= p.x && 
-              prev.x < p.x + p.width && 
-              newY >= p.y - 1
-            )
-            
+            const platformBelow = platforms.find((p) => prev.x >= p.x && prev.x < p.x + p.width && newY >= p.y - 1)
+
             if (platformBelow) {
               newY = platformBelow.y - 1
             }
@@ -108,7 +104,7 @@ export default function PlantParkour() {
 
         if (newY < highestY) {
           setHighestY(newY)
-          setScore(prev => prev + 10)
+          setScore((prev) => prev + 10)
         }
 
         setVelocity(newVelocity)
@@ -122,7 +118,7 @@ export default function PlantParkour() {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (gameOver) return
-      
+
       switch (e.key) {
         case "ArrowLeft":
           movePlayer(-1)
@@ -157,20 +153,22 @@ export default function PlantParkour() {
   }
 
   const renderGame = () => {
-    const grid: string[][] = Array(GAME_HEIGHT).fill(null).map(() => Array(GAME_WIDTH).fill("empty"))
-    
-    platforms.forEach(platform => {
+    const grid: string[][] = Array(GAME_HEIGHT)
+      .fill(null)
+      .map(() => Array(GAME_WIDTH).fill("empty"))
+
+    platforms.forEach((platform) => {
       for (let i = 0; i < platform.width; i++) {
         if (platform.y >= 0 && platform.y < GAME_HEIGHT) {
           grid[platform.y][platform.x + i] = "platform"
         }
       }
     })
-    
+
     if (playerPos.y >= 0 && playerPos.y < GAME_HEIGHT) {
       grid[playerPos.y][playerPos.x] = "player"
     }
-    
+
     return grid
   }
 
@@ -181,32 +179,35 @@ export default function PlantParkour() {
           <div className="text-sm text-muted-foreground">Puntos</div>
           <div className="text-2xl font-bold">{score}</div>
         </div>
-        
+
         <Button onClick={resetGame} variant="outline">
           Reiniciar
         </Button>
       </div>
 
       <Card className="p-4 bg-gradient-to-b from-sky-200 to-sky-100 dark:from-sky-950 dark:to-sky-900">
-        <div className="grid gap-[2px]" style={{ 
-          gridTemplateColumns: `repeat(${GAME_WIDTH}, 1fr)`,
-          gridTemplateRows: `repeat(${GAME_HEIGHT}, 1fr)`
-        }}>
+        <div
+          className="grid gap-[2px]"
+          style={{
+            gridTemplateColumns: `repeat(${GAME_WIDTH}, 1fr)`,
+            gridTemplateRows: `repeat(${GAME_HEIGHT}, 1fr)`,
+          }}
+        >
           {renderGame().map((row, y) =>
             row.map((cell, x) => (
               <div
                 key={`${y}-${x}`}
                 className={`w-6 h-6 flex items-center justify-center ${
-                  cell === "player" 
-                    ? "bg-green-500 rounded-full scale-110 z-10" 
+                  cell === "player"
+                    ? "bg-green-500 rounded-full scale-110 z-10"
                     : cell === "platform"
-                    ? "bg-amber-600 dark:bg-amber-700 border border-amber-700"
-                    : "bg-transparent"
+                      ? "bg-amber-600 dark:bg-amber-700 border border-amber-700"
+                      : "bg-transparent"
                 }`}
               >
                 {cell === "player" && <Leaf className="w-4 h-4 text-white" />}
               </div>
-            ))
+            )),
           )}
         </div>
       </Card>

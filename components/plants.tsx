@@ -207,10 +207,10 @@ export default function Plants() {
           {/* Flechas (solo si hay 2 macetas) */}
           {plants.length === 2 && (
             <>
-              <Button variant="ghost" size="icon" className="absolute left-[-15vh] top-1/2 -translate-y-1/2 rounded-full bg-white/80 backdrop-blur shadow-lg w-12 h-12" onClick={prevPlant}>
+              <Button variant="ghost" size="icon" className="absolute left-[-15vh] top-1/2 -translate-y-1/2 rounded-full bg-white/80 backdrop-blur shadow-lg w-12 h-12 cursor-pointer" onClick={prevPlant}>
                 <ChevronLeft className="w-7 h-7" />
               </Button>
-              <Button variant="ghost" size="icon" className="absolute right-[-15vh] top-1/2 -translate-y-1/2 rounded-full bg-white/80 backdrop-blur shadow-lg w-12 h-12" onClick={nextPlant}>
+              <Button variant="ghost" size="icon" className="absolute right-[-15vh] top-1/2 -translate-y-1/2 rounded-full bg-white/80 backdrop-blur shadow-lg w-12 h-12 cursor-pointer" onClick={nextPlant}>
                 <ChevronRight className="w-7 h-7" />
               </Button>
             </>
