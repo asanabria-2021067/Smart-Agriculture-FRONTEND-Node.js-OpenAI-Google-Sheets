@@ -10,6 +10,11 @@ export const API_CONFIG = {
   baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000",
 
   endpoints: {
+    pump: {
+      on: "/api/bomb/on",
+      off: "/api/bomb/off"
+    },
+    auto: "/api/auto/toggle",
     // === CHAT ENDPOINTS ===
     // POST /api/chat/message - Body: { userId: string, message: string, forceRefresh?: boolean }
     // Response: { success: true, userId: string, message: string, action: {...}, context: {...}, tokens: {...} }
