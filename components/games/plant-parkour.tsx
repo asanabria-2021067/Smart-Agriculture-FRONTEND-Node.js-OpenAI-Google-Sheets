@@ -19,101 +19,84 @@ export default function PlantParkour() {
     { x: 9, y: GAME_HEIGHT - 5, width: 3 },
     { x: 13, y: GAME_HEIGHT - 7, width: 2 },
   ])
-  const [isJumping, setIsJumping] = useState(false)
   const [velocity, setVelocity] = useState(0)
   const [score, setScore] = useState(0)
   const [gameOver, setGameOver] = useState(false)
   const [highestY, setHighestY] = useState(GAME_HEIGHT - 2)
+  const [isGrounded, setIsGrounded] = useState(true)
 
   const isOnPlatform = useCallback(
     (pos: Position): boolean => {
       return platforms.some(
-        (platform) => pos.x >= platform.x && pos.x < platform.x + platform.width && pos.y === platform.y - 1,
+        (platform) => 
+          pos.x >= platform.x && 
+          pos.x < platform.x + platform.width && 
+          pos.y === platform.y - 1
       )
     },
-    [platforms],
+    [platforms]
   )
-
-  const canMoveTo = useCallback((newPos: Position): boolean => {
-    if (newPos.x < 0 || newPos.x >= GAME_WIDTH || newPos.y >= GAME_HEIGHT) {
-      return false
-    }
-
-    return true
-  }, [])
 
   const movePlayer = useCallback(
     (dx: number) => {
       if (gameOver) return
 
-      const newPos = { x: playerPos.x + dx, y: playerPos.y }
-
-      if (canMoveTo(newPos)) {
-        setPlayerPos(newPos)
-      }
+      setPlayerPos((prev) => {
+        const newX = prev.x + dx
+        if (newX >= 0 && newX < GAME_WIDTH) {
+          return { ...prev, x: newX }
+        }
+        return prev
+      })
     },
-    [playerPos, canMoveTo, gameOver],
+    [gameOver]
   )
 
   const jump = useCallback(() => {
-    if (gameOver || isJumping) return
-
-    if (isOnPlatform(playerPos)) {
-      setIsJumping(true)
-      setVelocity(-3)
-    }
-  }, [playerPos, isOnPlatform, isJumping, gameOver])
+    if (gameOver || !isGrounded) return
+    setVelocity(-2.5)
+    setIsGrounded(false)
+  }, [isGrounded, gameOver])
 
   useEffect(() => {
     if (gameOver) return
 
     const gravityInterval = setInterval(() => {
       setPlayerPos((prev) => {
-        let newY = prev.y + 1
-        let newVelocity = velocity + 0.5
-
-        if (isJumping) {
-          newY = prev.y + velocity
-
-          if (velocity >= 0) {
-            const platformBelow = platforms.find((p) => prev.x >= p.x && prev.x < p.x + p.width && newY >= p.y - 1)
-
-            if (platformBelow) {
-              newY = platformBelow.y - 1
-              setIsJumping(false)
-              setVelocity(0)
-              newVelocity = 0
-            }
-          }
-        } else {
-          if (!isOnPlatform({ x: prev.x, y: prev.y })) {
-            const platformBelow = platforms.find((p) => prev.x >= p.x && prev.x < p.x + p.width && newY >= p.y - 1)
-
-            if (platformBelow) {
-              newY = platformBelow.y - 1
-            }
-          } else {
-            newY = prev.y
-          }
-        }
+        let newY = prev.y + velocity
+        let newVelocity = velocity + 0.3
 
         if (newY >= GAME_HEIGHT) {
           setGameOver(true)
           return prev
         }
 
+        const checkPos = { x: prev.x, y: Math.floor(newY) }
+        
+        if (velocity > 0 && isOnPlatform(checkPos)) {
+          const platform = platforms.find(
+            (p) => checkPos.x >= p.x && checkPos.x < p.x + p.width && Math.floor(newY) >= p.y - 1
+          )
+          if (platform) {
+            newY = platform.y - 1
+            newVelocity = 0
+            setIsGrounded(true)
+          }
+        }
+
         if (newY < highestY) {
+          const points = Math.floor((highestY - newY) * 10)
           setHighestY(newY)
-          setScore((prev) => prev + 10)
+          setScore((prev) => prev + points)
         }
 
         setVelocity(newVelocity)
         return { ...prev, y: Math.max(0, newY) }
       })
-    }, 100)
+    }, 50)
 
     return () => clearInterval(gravityInterval)
-  }, [velocity, isJumping, platforms, isOnPlatform, gameOver, highestY])
+  }, [velocity, platforms, isOnPlatform, gameOver, highestY])
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -121,13 +104,19 @@ export default function PlantParkour() {
 
       switch (e.key) {
         case "ArrowLeft":
+        case "a":
+          e.preventDefault()
           movePlayer(-1)
           break
         case "ArrowRight":
+        case "d":
+          e.preventDefault()
           movePlayer(1)
           break
         case "ArrowUp":
+        case "w":
         case " ":
+          e.preventDefault()
           jump()
           break
       }
@@ -145,11 +134,11 @@ export default function PlantParkour() {
       { x: 9, y: GAME_HEIGHT - 5, width: 3 },
       { x: 13, y: GAME_HEIGHT - 7, width: 2 },
     ])
-    setIsJumping(false)
     setVelocity(0)
     setScore(0)
     setGameOver(false)
     setHighestY(GAME_HEIGHT - 2)
+    setIsGrounded(true)
   }
 
   const renderGame = () => {
@@ -159,14 +148,15 @@ export default function PlantParkour() {
 
     platforms.forEach((platform) => {
       for (let i = 0; i < platform.width; i++) {
-        if (platform.y >= 0 && platform.y < GAME_HEIGHT) {
+        if (platform.y >= 0 && platform.y < GAME_HEIGHT && platform.x + i < GAME_WIDTH) {
           grid[platform.y][platform.x + i] = "platform"
         }
       }
     })
 
-    if (playerPos.y >= 0 && playerPos.y < GAME_HEIGHT) {
-      grid[playerPos.y][playerPos.x] = "player"
+    const py = Math.floor(playerPos.y)
+    if (py >= 0 && py < GAME_HEIGHT && playerPos.x >= 0 && playerPos.x < GAME_WIDTH) {
+      grid[py][playerPos.x] = "player"
     }
 
     return grid
@@ -207,13 +197,13 @@ export default function PlantParkour() {
               >
                 {cell === "player" && <Leaf className="w-4 h-4 text-white" />}
               </div>
-            )),
+            ))
           )}
         </div>
       </Card>
 
       <div className="text-xs text-muted-foreground text-center space-y-1">
-        <div>← → Mover | ↑ o Espacio: Saltar</div>
+        <div>← → (o A/D) Mover | ↑ (o W/Espacio): Saltar</div>
         <div>¡Sube lo más alto posible sin caer!</div>
       </div>
 
